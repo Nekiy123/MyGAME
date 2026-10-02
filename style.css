@@ -1,0 +1,108 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: Arial, sans-serif;
+    touch-action: none;
+}
+
+#game-container {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+}
+
+#game-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+}
+
+/* Зона джойстика */
+#joystick-zone {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 45%;
+    height: 60%;
+    touch-action: none;
+    z-index: 10;
+}
+
+#joystick-base {
+    position: absolute;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    left: 60px;
+    bottom: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+#joystick-knob {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    transition: transform 0.05s linear;
+}
+
+/* Кнопка прыжка */
+#jump-button {
+    position: absolute;
+    right: 50px;
+    bottom: 80px;
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    touch-action: none;
+    z-index: 10;
+    transition: background 0.1s, transform 0.1s;
+}
+
+#jump-button:active,
+#jump-button.pressed {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(0.92);
+}
+
+/* Прицел */
+#crosshair {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #00ff44;
+    box-shadow: 0 0 10px #00ff44, 0 0 20px rgba(0, 255, 68, 0.6);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 5;
+}
