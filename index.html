@@ -2,13 +2,21 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="screen-orientation" content="landscape">
+    <meta name="x5-orientation" content="landscape">
     <title>Horror Game</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Экран поворота телефона -->
+    <div id="rotate-overlay">
+        <div class="rotate-icon">📱</div>
+        <div class="rotate-text">Поверни телефон горизонтально</div>
+    </div>
+
     <div id="game-container">
         <canvas id="game-canvas"></canvas>
         
@@ -19,6 +27,9 @@
             </div>
         </div>
         
+        <!-- Зона обзора (правая часть экрана) -->
+        <div id="look-zone"></div>
+        
         <!-- Кнопка прыжка справа -->
         <div id="jump-button">JUMP</div>
         
@@ -28,4 +39,4 @@
     
     <script src="game.js"></script>
 </body>
-          </html>
+    </html>
