@@ -18,33 +18,24 @@ html, body {
     overscroll-behavior: none;
 }
 
-#rotate-overlay {
-    position: fixed;
-    inset: 0;
-    background: #000;
-    color: #fff;
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    gap: 20px;
-}
-#rotate-overlay .rotate-icon { font-size: 80px; animation: rotateAnim 2s ease-in-out infinite; }
-#rotate-overlay .rotate-text { font-size: 20px; color: #aaa; letter-spacing: 1px; }
-@keyframes rotateAnim {
-    0%, 100% { transform: rotate(0deg); }
-    50% { transform: rotate(90deg); }
-}
-@media (orientation: portrait) {
-    #rotate-overlay { display: flex; }
-    #game-container { display: none; }
-}
-
 #game-container {
     position: fixed;
     inset: 0;
     overflow: hidden;
+}
+
+/* ============================================
+   ФОРС-ПОВОРОТ (если нет гироскопа)
+   ============================================ */
+body.force-landscape #game-container {
+    width: 100vh;
+    height: 100vw;
+    transform: rotate(90deg);
+    transform-origin: top left;
+    top: 0;
+    left: 100vw;
+    margin-left: -100vh;
+    position: fixed;
 }
 
 #game-canvas {
@@ -53,74 +44,122 @@ html, body {
     height: 100%;
 }
 
-/* ===== HUD ===== */
-#hud {
+/* ============================================
+   МИНИКАРТА
+   ============================================ */
+#minimap-wrap {
     position: absolute;
-    top: 12px;
+    top: 10px;
+    left: 10px;
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(0, 0, 0, 0.4);
+    background: #2a2a2a;
+    z-index: 20;
+    pointer-events: none;
+}
+
+#minimap {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 50%;
+}
+
+#minimap-north {
+    position: absolute;
+    top: 4px;
     left: 50%;
     transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    z-index: 15;
-    pointer-events: none;
-    min-width: 260px;
-}
-
-.bar-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-}
-
-.bar-label {
-    font-size: 14px;
-    width: 20px;
-    text-align: center;
-}
-
-.bar {
-    flex: 1;
-    height: 10px;
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 5px;
-    overflow: hidden;
-}
-
-.bar-fill {
-    height: 100%;
-    transition: width 0.2s;
-    border-radius: 4px;
-}
-
-.bar-fill.health { background: linear-gradient(90deg, #b00, #f33); }
-.bar-fill.hunger { background: linear-gradient(90deg, #a60, #fb0); }
-.bar-fill.battery { background: linear-gradient(90deg, #06a, #0cf); }
-
-#resources {
-    display: flex;
-    gap: 16px;
     color: #fff;
-    font-size: 14px;
-    text-shadow: 0 0 4px #000;
-    margin-top: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    text-shadow: 0 0 4px #000, 0 0 8px #000;
+    pointer-events: none;
+    z-index: 2;
 }
 
-#hint {
-    color: #ffd;
+/* ============================================
+   HUD ИКОНКИ (справа от карты)
+   ============================================ */
+#hud-icons {
+    position: absolute;
+    top: 12px;
+    left: 155px;   /* сразу после карты */
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.hud-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 3px 8px;
+    backdrop-filter: blur(4px);
+}
+
+.hud-icon {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.mini-bar {
+    width: 44px;
+    height: 7px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.mini-fill {
+    height: 100%;
+    width: 100%;
+    transition: width 0.2s;
+    border-radius: 3px;
+}
+
+.mini-fill.health { background: linear-gradient(90deg, #b00, #f44); }
+.mini-fill.hunger { background: linear-gradient(90deg, #a60, #fb0); }
+.mini-fill.battery { background: linear-gradient(90deg, #06a, #0cf); }
+
+.hud-item.resources {
+    color: #fff;
     font-size: 13px;
-    text-shadow: 0 0 6px #000;
-    min-height: 18px;
-    text-align: center;
+    padding: 4px 10px;
+}
+
+/* ============================================
+   Подсказка
+   ============================================ */
+#hint {
+    position: absolute;
+    top: 55px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #ffd;
+    font-size: 14px;
+    text-shadow: 0 0 8px #000, 0 0 12px #000;
     transition: opacity 0.3s;
     opacity: 0;
+    pointer-events: none;
+    z-index: 20;
 }
 #hint.show { opacity: 1; }
 
-/* ===== Джойстик ===== */
+/* ============================================
+   Джойстик
+   ============================================ */
 #joystick-zone {
     position: absolute;
     left: 0;
@@ -156,7 +195,9 @@ html, body {
     transition: transform 0.05s linear;
 }
 
-/* ===== Обзор ===== */
+/* ============================================
+   Обзор
+   ============================================ */
 #look-zone {
     position: absolute;
     right: 0;
@@ -167,21 +208,23 @@ html, body {
     z-index: 5;
 }
 
-/* ===== Кнопки действий ===== */
+/* ============================================
+   Кнопки действий
+   ============================================ */
 #action-buttons {
     position: absolute;
     right: 30px;
     bottom: 20px;
     display: grid;
-    grid-template-columns: repeat(3, 60px);
-    grid-template-rows: repeat(2, 60px);
-    gap: 8px;
+    grid-template-columns: repeat(2, 65px);
+    grid-template-rows: repeat(2, 65px);
+    gap: 10px;
     z-index: 20;
 }
 
 .action-btn {
-    width: 60px;
-    height: 60px;
+    width: 65px;
+    height: 65px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.08);
     border: 2px solid rgba(255, 255, 255, 0.3);
@@ -189,7 +232,7 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 26px;
     touch-action: none;
     transition: background 0.1s, transform 0.1s;
     pointer-events: auto;
@@ -207,10 +250,12 @@ html, body {
     box-shadow: 0 0 15px rgba(255, 220, 100, 0.5);
 }
 
-/* ===== Полноэкранная кнопка ===== */
+/* ============================================
+   Полный экран
+   ============================================ */
 #fullscreen-btn {
     position: absolute;
-    left: 20px;
+    right: 20px;
     top: 20px;
     width: 44px;
     height: 44px;
@@ -227,7 +272,9 @@ html, body {
 }
 #fullscreen-btn:active { background: rgba(255, 255, 255, 0.25); }
 
-/* ===== Прицел ===== */
+/* ============================================
+   Прицел
+   ============================================ */
 #crosshair {
     position: absolute;
     left: 50%;
@@ -240,10 +287,11 @@ html, body {
     transform: translate(-50%, -50%);
     pointer-events: none;
     z-index: 5;
-    transition: opacity 0.2s;
 }
 
-/* ===== Вспышка урона ===== */
+/* ============================================
+   Вспышка урона
+   ============================================ */
 #damage-flash {
     position: absolute;
     inset: 0;
@@ -254,7 +302,9 @@ html, body {
 }
 #damage-flash.hit { background: rgba(200, 0, 0, 0.4); }
 
-/* ===== Экран смерти ===== */
+/* ============================================
+   Экран смерти
+   ============================================ */
 #death-screen {
     position: absolute;
     inset: 0;
@@ -269,26 +319,22 @@ html, body {
 #death-screen.show { display: flex; }
 
 .death-title {
-    font-size: 48px;
+    font-size: 44px;
     color: #b00;
     font-weight: bold;
     letter-spacing: 4px;
     text-shadow: 0 0 20px rgba(180, 0, 0, 0.8);
 }
 
-.death-reason {
-    font-size: 20px;
-    color: #ccc;
-}
+.death-reason { font-size: 18px; color: #ccc; }
 
 #respawn-btn {
-    padding: 14px 40px;
+    padding: 12px 36px;
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid rgba(255, 255, 255, 0.4);
     color: #fff;
-    font-size: 18px;
+    font-size: 17px;
     border-radius: 10px;
-    cursor: pointer;
     letter-spacing: 1px;
 }
 #respawn-btn:active { background: rgba(255, 255, 255, 0.3); }
