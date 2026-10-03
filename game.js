@@ -1,5 +1,5 @@
 // ============================================
-// FOREST — v5 (CSS-поворот + миникарта)
+// FOREST — v8 (светлая карта + отзывчивое управление)
 // ============================================
 
 const canvas = document.getElementById('game-canvas');
@@ -10,50 +10,25 @@ const mmCtx = minimap.getContext('2d');
 let W = window.innerWidth;
 let H = window.innerHeight;
 
-// ============================================
-// ОПРЕДЕЛЕНИЕ ФОРС-ПОВОРОТА
-// ============================================
-function applyForceLandscape() {
-    const isPortrait = window.innerHeight > window.innerWidth;
-    // Если портрет — поворачиваем принудительно
-    if (isPortrait) {
-        document.body.classList.add('force-landscape');
-    } else {
-        document.body.classList.remove('force-landscape');
-    }
-}
-
 function resize() {
-    const isForced = document.body.classList.contains('force-landscape');
-    if (isForced) {
-        // Меняем местами, т.к. CSS повернул контейнер
-        W = window.innerHeight;
-        H = window.innerWidth;
-    } else {
-        W = window.innerWidth;
-        H = window.innerHeight;
-    }
+    W = window.innerWidth;
+    H = window.innerHeight;
     canvas.width = W;
     canvas.height = H;
     canvas.style.width = W + 'px';
     canvas.style.height = H + 'px';
     
-    // Миникарта
-    const mmSize = 130;
+    const mmSize = 150;
     minimap.width = mmSize;
     minimap.height = mmSize;
 }
 
-applyForceLandscape();
 resize();
-
-window.addEventListener('resize', () => { applyForceLandscape(); resize(); });
-window.addEventListener('orientationchange', () => {
-    setTimeout(() => { applyForceLandscape(); resize(); }, 300);
-});
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 300));
 
 // ============================================
-// БЛОКИРОВКА ОРИЕНТАЦИИ (для тех, у кого есть)
+// БЛОКИРОВКА ОРИЕНТАЦИИ (если поддерживается)
 // ============================================
 function lockLandscape() {
     if (screen.orientation && 'lock' in screen.orientation) {
@@ -72,7 +47,7 @@ fullscreenBtn.addEventListener('touchstart', (e) => {
     const el = document.documentElement;
     if (!document.fullscreenElement && !document.webkitFullscreenElement) {
         (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
-        setTimeout(() => { lockLandscape(); applyForceLandscape(); resize(); }, 300);
+        setTimeout(lockLandscape, 300);
     } else {
         (document.exitFullscreen || document.webkitExitFullscreen).call(document);
     }
@@ -167,7 +142,7 @@ const player = {
     z: (MID + 0.5) * CELL,
     y: 0, vy: 0,
     height: 1.6,
-    speed: 4,
+    speed: 5,
     angle: 0, pitch: 0,
     onGround: true,
     jumpPower: 6.5,
@@ -200,14 +175,22 @@ function handleJoyStart(e) {
     joystick.touchId = touch.identifier;
     joystick.centerX = touch.clientX;
     joystick.centerY = touch.clientY;
+    
     const rect = joystickZone.getBoundingClientRect();
     joystickBase.style.left = (touch.clientX - rect.left - 65) + 'px';
     joystickBase.style.top = (touch.clientY - rect.top - 65) + 'px';
     joystickBase.style.transform = 'none';
+    
+    // Делаем джойстик заметнее при касании
+    joystickBase.style.background = 'rgba(255, 255, 255, 0.15)';
+    joystickBase.style.borderColor = 'rgba(255, 255, 255, 0.5)';
+    
     joystick.dx = 0; joystick.dy = 0;
     joystickKnob.style.transform = 'translate(0,0)';
+    joystickKnob.style.background = 'rgba(255, 255, 255, 0.6)';
     e.preventDefault();
 }
+
 function handleJoyMove(e) {
     if (!joystick.active) return;
     for (let i = 0; i < e.changedTouches.length; i++) {
@@ -216,13 +199,18 @@ function handleJoyMove(e) {
             let dx = t.clientX - joystick.centerX;
             let dy = t.clientY - joystick.centerY;
             const d = Math.hypot(dx, dy);
-            if (d > joystick.maxDist) { dx = dx / d * joystick.maxDist; dy = dy / d * joystick.maxDist; }
-            joystick.dx = dx; joystick.dy = dy;
+            if (d > joystick.maxDist) { 
+                dx = dx / d * joystick.maxDist; 
+                dy = dy / d * joystick.maxDist; 
+            }
+            joystick.dx = dx; 
+            joystick.dy = dy;
             joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
         }
     }
     e.preventDefault();
 }
+
 function handleJoyEnd(e) {
     for (let i = 0; i < e.changedTouches.length; i++) {
         if (e.changedTouches[i].identifier === joystick.touchId) {
@@ -230,10 +218,16 @@ function handleJoyEnd(e) {
             joystick.touchId = null;
             joystick.dx = 0; joystick.dy = 0;
             joystickKnob.style.transform = 'translate(0,0)';
+            
+            // Возвращаем базовый вид
+            joystickBase.style.background = 'rgba(255, 255, 255, 0.06)';
+            joystickBase.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            joystickKnob.style.background = 'rgba(255, 255, 255, 0.3)';
         }
     }
     e.preventDefault();
 }
+
 joystickZone.addEventListener('touchstart', handleJoyStart, { passive: false });
 joystickZone.addEventListener('touchmove', handleJoyMove, { passive: false });
 joystickZone.addEventListener('touchend', handleJoyEnd, { passive: false });
@@ -253,6 +247,7 @@ function handleLookStart(e) {
     look.lastY = t.clientY;
     e.preventDefault();
 }
+
 function handleLookMove(e) {
     if (!look.active) return;
     for (let i = 0; i < e.changedTouches.length; i++) {
@@ -265,19 +260,23 @@ function handleLookMove(e) {
             const mp = Math.PI / 2 - 0.15;
             if (player.pitch > mp) player.pitch = mp;
             if (player.pitch < -mp) player.pitch = -mp;
-            look.lastX = t.clientX; look.lastY = t.clientY;
+            look.lastX = t.clientX; 
+            look.lastY = t.clientY;
         }
     }
     e.preventDefault();
 }
+
 function handleLookEnd(e) {
     for (let i = 0; i < e.changedTouches.length; i++) {
         if (e.changedTouches[i].identifier === look.touchId) {
-            look.active = false; look.touchId = null;
+            look.active = false; 
+            look.touchId = null;
         }
     }
     e.preventDefault();
 }
+
 lookZone.addEventListener('touchstart', handleLookStart, { passive: false });
 lookZone.addEventListener('touchmove', handleLookMove, { passive: false });
 lookZone.addEventListener('touchend', handleLookEnd, { passive: false });
@@ -285,7 +284,11 @@ lookZone.addEventListener('touchcancel', handleLookEnd, { passive: false });
 
 // Мышь для ПК
 let mouseDown = false;
-lookZone.addEventListener('mousedown', (e) => { mouseDown = true; look.lastX = e.clientX; look.lastY = e.clientY; });
+lookZone.addEventListener('mousedown', (e) => { 
+    mouseDown = true; 
+    look.lastX = e.clientX; 
+    look.lastY = e.clientY; 
+});
 window.addEventListener('mousemove', (e) => {
     if (!mouseDown) return;
     player.angle += (e.clientX - look.lastX) * 0.005;
@@ -293,7 +296,8 @@ window.addEventListener('mousemove', (e) => {
     const mp = Math.PI / 2 - 0.15;
     if (player.pitch > mp) player.pitch = mp;
     if (player.pitch < -mp) player.pitch = -mp;
-    look.lastX = e.clientX; look.lastY = e.clientY;
+    look.lastX = e.clientX; 
+    look.lastY = e.clientY;
 });
 window.addEventListener('mouseup', () => mouseDown = false);
 
@@ -311,16 +315,24 @@ function bindButton(id, onDown) {
         e.preventDefault();
         btn.classList.remove('pressed');
     }, { passive: false });
-    btn.addEventListener('click', (e) => { e.preventDefault(); onDown(); });
+    btn.addEventListener('click', (e) => { 
+        e.preventDefault(); 
+        onDown(); 
+    });
 }
 
 bindButton('jump-button', () => {
     if (!player.alive) return;
-    if (player.onGround) { player.vy = player.jumpPower; player.onGround = false; }
+    if (player.onGround) { 
+        player.vy = player.jumpPower; 
+        player.onGround = false; 
+    }
 });
+
 document.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && player.onGround && player.alive) {
-        player.vy = player.jumpPower; player.onGround = false;
+        player.vy = player.jumpPower; 
+        player.onGround = false;
     }
 });
 
@@ -330,7 +342,10 @@ bindButton('collect-button', () => {
     for (const b of berryBushes) {
         if (b.collected) continue;
         const d = Math.hypot(b.x - player.x, b.z - player.z);
-        if (d < cd) { cd = d; closest = b; }
+        if (d < cd) { 
+            cd = d; 
+            closest = b; 
+        }
     }
     if (closest) {
         closest.collected = true;
@@ -343,7 +358,10 @@ bindButton('collect-button', () => {
 const flashBtn = document.getElementById('flashlight-button');
 bindButton('flashlight-button', () => {
     if (!player.alive) return;
-    if (player.battery <= 0) { showHint('Батарея разряжена'); return; }
+    if (player.battery <= 0) { 
+        showHint('Батарея разряжена'); 
+        return; 
+    }
     player.flashlight = !player.flashlight;
     flashBtn.classList.toggle('active', player.flashlight);
 });
@@ -389,8 +407,14 @@ function tryMove(nx, nz) {
 function drawSky() {
     ctx.save();
     const pitchOffset = player.pitch * H * 0.8;
-    ctx.fillStyle = '#000';
+    
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.7);
+    skyGrad.addColorStop(0, '#000010');
+    skyGrad.addColorStop(0.6, '#050518');
+    skyGrad.addColorStop(1, '#0a0a20');
+    ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, W, H);
+    
     ctx.translate(0, pitchOffset);
 
     const time = performance.now() / 1000;
@@ -460,24 +484,30 @@ function renderWalls() {
         const wallHeight = (CELL * 1.8 * H) / correctedDist * 0.9;
         const wallTop = horizon - wallHeight / 2 + (player.height - 1.6) * H / correctedDist;
 
-        let brightness = Math.max(0, 1 - correctedDist / 15) * 0.4;
+        // Яркость — теперь значительно выше
+        let brightness = Math.max(0.15, 1 - correctedDist / 30) * 0.85;
+        
         const rayOffset = (i / numRays) - 0.5;
         if (player.flashlight && Math.abs(rayOffset) < 0.4) {
             const falloff = 1 - Math.abs(rayOffset) / 0.4;
-            brightness += falloff * Math.max(0, 1 - correctedDist / 20) * 0.7;
+            brightness += falloff * Math.max(0, 1 - correctedDist / 25) * 0.8;
         }
-        const fireFalloff = Math.max(0, 1 - fireDist / campfire.radius);
-        brightness += fireFalloff * 0.3;
+        
+        const fireFalloff = Math.max(0, 1 - fireDist / (campfire.radius * 1.5));
+        brightness += fireFalloff * 0.5;
+        
+        brightness = Math.min(1.2, brightness);
 
-        const r = Math.floor(60 * brightness + 15);
-        const g = Math.floor(40 * brightness + 10);
-        const b = Math.floor(25 * brightness + 8);
+        // Дерево — светлее
+        const r = Math.floor(90 * brightness + 30);
+        const g = Math.floor(70 * brightness + 25);
+        const b = Math.floor(45 * brightness + 15);
 
         ctx.fillStyle = `rgb(${r},${g},${b})`;
         ctx.fillRect(screenX, wallTop, rayStep + 1, wallHeight);
 
         if (i % 3 === 0) {
-            ctx.fillStyle = `rgba(0, 0, 0, ${0.4 * brightness})`;
+            ctx.fillStyle = `rgba(0, 0, 0, ${0.2 * brightness})`;
             ctx.fillRect(screenX, wallTop, 1, wallHeight);
         }
     }
@@ -488,10 +518,11 @@ function renderWalls() {
 // ============================================
 function renderFloor() {
     const horizon = H / 2 + player.pitch * H * 0.8;
+    
     const floorGrad = ctx.createLinearGradient(0, horizon, 0, H);
-    floorGrad.addColorStop(0, '#000');
-    floorGrad.addColorStop(0.3, '#0a0805');
-    floorGrad.addColorStop(1, '#100c08');
+    floorGrad.addColorStop(0, '#1a1510');
+    floorGrad.addColorStop(0.4, '#2a2015');
+    floorGrad.addColorStop(1, '#3a2e1a');
 
     if (horizon < H) {
         ctx.fillStyle = floorGrad;
@@ -501,13 +532,15 @@ function renderFloor() {
 
     const floorTop = Math.max(0, horizon);
     const camY = player.height + player.y;
-    for (let d = 1; d < 20; d++) {
+    
+    for (let d = 1; d < 25; d++) {
         const worldZ = d * CELL;
         const screenY = horizon + (H - horizon) * (camY / (camY + worldZ * 0.7));
         if (screenY < floorTop || screenY > H) continue;
-        const alpha = Math.max(0, 1 - d / 15) * 0.25;
+        
+        const alpha = Math.max(0, 1 - d / 20) * 0.35;
         ctx.globalAlpha = alpha;
-        ctx.strokeStyle = '#3a2a15';
+        ctx.strokeStyle = '#6a5a3a';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(0, screenY);
@@ -601,42 +634,43 @@ function renderBerries() {
 }
 
 // ============================================
-// ВИНЬЕТКА + ТЕМНОТА
+// ВИНЬЕТКА
 // ============================================
 function drawVignette() {
-    let darkness = 0.75;
-    if (player.flashlight) darkness = 0.55;
+    let darkness = 0.35;
+    if (player.flashlight) darkness = 0.2;
+    
     const fireDist = Math.hypot(campfire.x - player.x, campfire.z - player.z);
-    if (fireDist < campfire.radius) darkness -= 0.3 * (1 - fireDist / campfire.radius);
+    if (fireDist < campfire.radius) {
+        darkness -= 0.15 * (1 - fireDist / campfire.radius);
+    }
 
     ctx.fillStyle = `rgba(0, 0, 0, ${Math.max(0, darkness)})`;
     ctx.fillRect(0, 0, W, H);
 
-    const grad = ctx.createRadialGradient(W/2, H/2, Math.min(W,H) * 0.3, W/2, H/2, Math.max(W,H) * 0.75);
+    const grad = ctx.createRadialGradient(W/2, H/2, Math.min(W,H) * 0.4, W/2, H/2, Math.max(W,H) * 0.8);
     grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.85)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.5)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 }
 
 // ============================================
-// МИНИКАРТА (ФИКСИРОВАННАЯ, СВЕТЛАЯ)
+// МИНИКАРТА (СВЕТЛАЯ)
 // ============================================
 function renderMinimap() {
     const size = minimap.width;
     const cx = size / 2;
     const cy = size / 2;
     
-    // Радиус обзора карты (в клетках)
-    const viewRadius = 10;
+    const viewRadius = 7;
     const scale = (size / 2) / viewRadius;
     
-    // === ФОН (светлый) ===
-    mmCtx.fillStyle = '#3a3a3a';
+    // Светлый фон
+    mmCtx.fillStyle = '#d4d4bc';
     mmCtx.fillRect(0, 0, size, size);
     
-    // === КАРТА (фиксированная, север сверху) ===
-    // Центр карты = игрок. Отображаем вокруг него viewRadius клеток.
+    // Карта
     const pgx = player.x / CELL;
     const pgz = player.z / CELL;
     
@@ -644,7 +678,6 @@ function renderMinimap() {
         for (let dx = -viewRadius; dx <= viewRadius; dx++) {
             const gx = Math.floor(pgx + dx);
             const gz = Math.floor(pgz + dz);
-            
             if (gx < 0 || gz < 0 || gx >= MAP_SIZE || gz >= MAP_SIZE) continue;
             
             const cell = MAP[gz][gx];
@@ -652,21 +685,17 @@ function renderMinimap() {
             const screenY = cy + (dz - (pgz - Math.floor(pgz))) * scale;
             
             if (cell === 'T') {
-                // Дерево — тёмно-зелёное
-                mmCtx.fillStyle = '#2a5a2a';
+                mmCtx.fillStyle = '#5a9a5a';
             } else if (cell === 'C') {
-                // Костёр — оранжевый
                 mmCtx.fillStyle = '#ff8833';
             } else {
-                // Пусто — светлая земля
-                mmCtx.fillStyle = '#8a8a75';
+                mmCtx.fillStyle = '#e8e8d0';
             }
-            
             mmCtx.fillRect(screenX, screenY, scale + 0.5, scale + 0.5);
         }
     }
     
-    // === ЯГОДЫ ===
+    // Ягоды
     for (const b of berryBushes) {
         if (b.collected) continue;
         const bdx = (b.x - player.x) / CELL;
@@ -674,13 +703,16 @@ function renderMinimap() {
         if (Math.hypot(bdx, bdz) > viewRadius) continue;
         const bx = cx + bdx * scale;
         const by = cy + bdz * scale;
-        mmCtx.fillStyle = '#ff3355';
+        mmCtx.fillStyle = '#ee2244';
         mmCtx.beginPath();
-        mmCtx.arc(bx, by, 2.5, 0, Math.PI * 2);
+        mmCtx.arc(bx, by, 3, 0, Math.PI * 2);
         mmCtx.fill();
+        mmCtx.strokeStyle = '#660011';
+        mmCtx.lineWidth = 1;
+        mmCtx.stroke();
     }
     
-    // === КОСТЁР (если виден) ===
+    // Костёр
     const cdx = (campfire.x - player.x) / CELL;
     const cdz = (campfire.z - player.z) / CELL;
     if (Math.hypot(cdx, cdz) <= viewRadius) {
@@ -688,31 +720,33 @@ function renderMinimap() {
         const cyPos = cy + cdz * scale;
         mmCtx.fillStyle = '#ffcc00';
         mmCtx.beginPath();
-        mmCtx.arc(cxPos, cyPos, 4, 0, Math.PI * 2);
+        mmCtx.arc(cxPos, cyPos, 5, 0, Math.PI * 2);
         mmCtx.fill();
-        mmCtx.strokeStyle = '#ff6600';
-        mmCtx.lineWidth = 1;
+        mmCtx.strokeStyle = '#ff4400';
+        mmCtx.lineWidth = 1.5;
         mmCtx.stroke();
     }
     
-    // === ИГРОК (в центре, с направлением) ===
+    // Игрок
     mmCtx.save();
     mmCtx.translate(cx, cy);
-    mmCtx.rotate(-player.angle); // Минус — потому что у нас Z-вперёд, а на карте Y-вверх
-    // Треугольник направления
-    mmCtx.fillStyle = '#00ff66';
+    mmCtx.rotate(-player.angle);
+    mmCtx.fillStyle = '#00dd44';
+    mmCtx.strokeStyle = '#003300';
+    mmCtx.lineWidth = 1;
     mmCtx.beginPath();
-    mmCtx.moveTo(0, -8);
-    mmCtx.lineTo(-5, 5);
-    mmCtx.lineTo(5, 5);
+    mmCtx.moveTo(0, -9);
+    mmCtx.lineTo(-6, 6);
+    mmCtx.lineTo(6, 6);
     mmCtx.closePath();
     mmCtx.fill();
+    mmCtx.stroke();
     mmCtx.restore();
     
-    // === Затемнение по краям (круглая маска) ===
-    const radial = mmCtx.createRadialGradient(cx, cy, size * 0.32, cx, cy, size * 0.5);
+    // Виньетка
+    const radial = mmCtx.createRadialGradient(cx, cy, size * 0.4, cx, cy, size * 0.5);
     radial.addColorStop(0, 'rgba(0,0,0,0)');
-    radial.addColorStop(1, 'rgba(0,0,0,0.7)');
+    radial.addColorStop(1, 'rgba(0,0,0,0.35)');
     mmCtx.fillStyle = radial;
     mmCtx.fillRect(0, 0, size, size);
 }
@@ -769,15 +803,22 @@ function update(dt) {
     if (joystick.active) {
         const jx = joystick.dx / joystick.maxDist;
         const jy = joystick.dy / joystick.maxDist;
-        const dz = 0.15;
-        const mx = Math.abs(jx) < dz ? 0 : jx;
-        const my = Math.abs(jy) < dz ? 0 : jy;
+        
+        // Мёртвая зона 0.1
+        const deadzone = 0.1;
+        const mx = Math.abs(jx) < deadzone ? 0 : jx;
+        const my = Math.abs(jy) < deadzone ? 0 : jy;
+        
+        // Вверх = -my (вперёд), вниз = +my (назад)
         const forward = -my;
         const strafe = mx;
+        
         const sinA = Math.sin(player.angle);
         const cosA = Math.cos(player.angle);
+        
         const moveX = (sinA * forward + cosA * strafe) * player.speed * dt;
         const moveZ = (cosA * forward - sinA * strafe) * player.speed * dt;
+        
         if (tryMove(player.x + moveX, player.z)) player.x += moveX;
         if (tryMove(player.x, player.z + moveZ)) player.z += moveZ;
     }
@@ -785,7 +826,11 @@ function update(dt) {
     if (!player.onGround) {
         player.vy -= player.gravity * dt;
         player.y += player.vy * dt;
-        if (player.y <= 0) { player.y = 0; player.vy = 0; player.onGround = true; }
+        if (player.y <= 0) { 
+            player.y = 0; 
+            player.vy = 0; 
+            player.onGround = true; 
+        }
     }
 
     hungerTimer += dt;
