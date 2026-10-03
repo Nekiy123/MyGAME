@@ -1,5 +1,5 @@
 // ============================================
-// FOREST — v10 (полная карта + новые значки + фикс движения)
+// FOREST — v11 (исправлен чёрный экран + светлая карта)
 // ============================================
 
 const canvas = document.getElementById('game-canvas');
@@ -67,35 +67,46 @@ for (let i = 0; i < 12; i++) {
 // ============================================
 const MAP_SIZE = 30;
 const CELL = 3;
+const MID = Math.floor(MAP_SIZE / 2);
 
 const MAP = [];
-// Генерируем "остров": по краям вода, внутри лес
 for (let z = 0; z < MAP_SIZE; z++) {
     let row = '';
     for (let x = 0; x < MAP_SIZE; x++) {
-        const cx = MAP_SIZE / 2;
-        const cz = MAP_SIZE / 2;
         const distFromEdge = Math.min(x, z, MAP_SIZE - 1 - x, MAP_SIZE - 1 - z);
         
-        // 2 клетки от края — вода (непроходимо)
+        // 2 клетки от края — вода
         if (distFromEdge < 2) {
-            row += 'W'; // Water — стена
+            row += 'W';
+            continue;
+        }
+        
+        // Стартовая поляна 7×7 вокруг центра
+        const distToCenter = Math.hypot(x - MID, z - MID);
+        if (distToCenter < 3.5) {
+            row += '.';
+            continue;
+        }
+        
+        // Поляна вокруг старта игрока
+        const startX = MID + 1;
+        const startZ = MID;
+        if (Math.abs(x - startX) <= 2 && Math.abs(z - startZ) <= 2) {
+            row += '.';
+            continue;
+        }
+        
+        // Обычный лес — 25% плотности
+        if (Math.random() < 0.25) {
+            row += 'T';
         } else {
-            const distToCenter = Math.hypot(x - cx, z - cz);
-            // Поляна в центре
-            if (distToCenter < 4) {
-                row += '.';
-            } else if (Math.random() < 0.4) {
-                row += 'T';
-            } else {
-                row += '.';
-            }
+            row += '.';
         }
     }
     MAP.push(row);
 }
 
-const MID = Math.floor(MAP_SIZE / 2);
+// Костёр в центре
 MAP[MID] = MAP[MID].substring(0, MID) + 'C' + MAP[MID].substring(MID + 1);
 
 function getCell(wx, wz) {
@@ -123,12 +134,13 @@ const campfire = {
 // ============================================
 const berryBushes = [];
 for (let i = 0; i < 25; i++) {
-    for (let attempt = 0; attempt < 30; attempt++) {
+    for (let attempt = 0; attempt < 50; attempt++) {
         const gx = 3 + Math.floor(Math.random() * (MAP_SIZE - 6));
         const gz = 3 + Math.floor(Math.random() * (MAP_SIZE - 6));
+        
         if (MAP[gz][gx] === '.') {
             const distToCenter = Math.hypot(gx - MID, gz - MID);
-            if (distToCenter > 5) {
+            if (distToCenter > 6) {
                 berryBushes.push({
                     x: (gx + 0.5) * CELL,
                     z: (gz + 0.5) * CELL,
@@ -142,10 +154,10 @@ for (let i = 0; i < 25; i++) {
 }
 
 // ============================================
-// ИГРОК — БЕЗ ИНЕРЦИИ
+// ИГРОК
 // ============================================
 const player = {
-    x: (MID + 0.5) * CELL + CELL,
+    x: (MID + 1.5) * CELL,
     z: (MID + 0.5) * CELL,
     y: 0, vy: 0,
     height: 1.6,
@@ -162,6 +174,16 @@ const player = {
     flashlight: false,
     battery: 100
 };
+
+// Проверка: игрок не в стене
+function ensurePlayerNotInWall() {
+    if (isWall(player.x, player.z)) {
+        player.x = (MID + 0.5) * CELL;
+        player.z = (MID + 0.5) * CELL;
+        console.warn('Игрок был в стене — перемещён в центр');
+    }
+}
+ensurePlayerNotInWall();
 
 // ============================================
 // ДЖОЙСТИК
@@ -288,7 +310,7 @@ window.addEventListener('mousemove', (e) => {
 window.addEventListener('mouseup', () => mouseDown = false);
 
 // ============================================
-// ПОЛНАЯ КАРТА — ОТКРЫТИЕ ПО ТАПУ НА МИНИКАРТУ
+// ПОЛНАЯ КАРТА
 // ============================================
 const fullmapScreen = document.getElementById('fullmap-screen');
 
@@ -317,42 +339,33 @@ fullmapScreen.addEventListener('touchstart', (e) => {
 }, { passive: false });
 
 function drawFullmap() {
-    // Размер: квадрат в пределах экрана
     const size = Math.min(window.innerWidth * 0.85, window.innerHeight * 0.75);
     fullmapCanvas.width = size;
     fullmapCanvas.height = size;
     
-    const cs = size / MAP_SIZE; // размер клетки на карте
+    const cs = size / MAP_SIZE;
     
-    // === ФОН — вода ===
+    // Фон — вода
     fmCtx.fillStyle = '#5a9ac8';
     fmCtx.fillRect(0, 0, size, size);
     
-    // === ОСТРОВ ===
+    // Остров
     for (let z = 0; z < MAP_SIZE; z++) {
         for (let x = 0; x < MAP_SIZE; x++) {
             const cell = MAP[z][x];
             const px = x * cs;
             const py = z * cs;
             
-            if (cell === 'W') {
-                // Вода уже нарисована
-                continue;
-            } else if (cell === 'T') {
-                // Дерево — тёмно-зелёное
-                fmCtx.fillStyle = '#3a6a3a';
-            } else if (cell === 'C') {
-                // Костёр — оранжевый
-                fmCtx.fillStyle = '#ff8833';
-            } else {
-                // Пусто — светлая земля
-                fmCtx.fillStyle = '#a8c88a';
-            }
+            if (cell === 'W') continue;
+            else if (cell === 'T') fmCtx.fillStyle = '#3a6a3a';
+            else if (cell === 'C') fmCtx.fillStyle = '#ff8833';
+            else fmCtx.fillStyle = '#a8c88a';
+            
             fmCtx.fillRect(px, py, cs + 0.5, cs + 0.5);
         }
     }
     
-    // === ЯГОДЫ (мелкие красные точки) ===
+    // Ягоды
     for (const b of berryBushes) {
         if (b.collected) continue;
         const bx = (b.x / CELL) * cs;
@@ -363,7 +376,7 @@ function drawFullmap() {
         fmCtx.fill();
     }
     
-    // === КОСТЁР (жёлтый кружок) ===
+    // Костёр
     const cx = (campfire.x / CELL) * cs;
     const cz = (campfire.z / CELL) * cs;
     fmCtx.fillStyle = '#ffcc00';
@@ -374,11 +387,10 @@ function drawFullmap() {
     fmCtx.lineWidth = 2;
     fmCtx.stroke();
     
-    // === ИГРОК — КРАСНАЯ СТРЕЛКА (только одна!) ===
+    // Игрок — красная стрелка
     const px = (player.x / CELL) * cs;
     const pz = (player.z / CELL) * cs;
     
-    // Пульсация
     const time = performance.now() / 500;
     const pulse = 1 + Math.sin(time) * 0.15;
     
@@ -386,19 +398,11 @@ function drawFullmap() {
     fmCtx.translate(px, pz);
     fmCtx.rotate(player.angle);
     
-    // Тень
-    fmCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-    fmCtx.beginPath();
-    fmCtx.arc(2, 2, cs * 0.8 * pulse, 0, Math.PI * 2);
-    fmCtx.fill();
-    
-    // Красный круг вокруг игрока
     fmCtx.fillStyle = 'rgba(230, 30, 50, 0.35)';
     fmCtx.beginPath();
     fmCtx.arc(0, 0, cs * 0.8 * pulse, 0, Math.PI * 2);
     fmCtx.fill();
     
-    // Стрелка (красная)
     fmCtx.fillStyle = '#ee2233';
     fmCtx.strokeStyle = '#fff';
     fmCtx.lineWidth = 2;
@@ -410,10 +414,9 @@ function drawFullmap() {
     fmCtx.closePath();
     fmCtx.fill();
     fmCtx.stroke();
-    
     fmCtx.restore();
     
-    // === Буква N (север) ===
+    // N
     fmCtx.fillStyle = '#fff';
     fmCtx.font = 'bold 16px Arial';
     fmCtx.textAlign = 'center';
@@ -571,14 +574,14 @@ function drawSky() {
 }
 
 // ============================================
-// РЕЙКАСТИНГ — деревья ближе (как на фото 3)
+// РЕЙКАСТИНГ
 // ============================================
 const FOV = Math.PI / 3;
 const HALF_FOV = FOV / 2;
 
 function castRay(rayAngle) {
     const cos = Math.cos(rayAngle), sin = Math.sin(rayAngle);
-    const step = 0.05;   // мельче шаг — точнее попадание в стволы
+    const step = 0.05;
     let dist = 0;
     const maxDist = 35;
     while (dist < maxDist) {
@@ -590,7 +593,7 @@ function castRay(rayAngle) {
 
 function renderWalls() {
     const horizon = H / 2 + player.pitch * H * 0.8;
-    const numRays = Math.floor(W / 2);  // больше лучей — тоньше стволы
+    const numRays = Math.floor(W / 2);
     const rayStep = W / numRays;
 
     for (let i = 0; i < numRays; i++) {
@@ -599,15 +602,11 @@ function renderWalls() {
         const dist = castRay(rayAngle);
         const correctedDist = dist * Math.cos(rayAngle - player.angle);
         
-        // Деревья выше (приближение к фото 3) — 2.5 вместо 1.8
         const wallHeight = (CELL * 2.5 * H) / correctedDist * 0.9;
         const wallTop = horizon - wallHeight / 2 + (player.height - 1.6) * H / correctedDist;
-        const wallBottom = wallTop + wallHeight;
 
-        // Дневная яркость
         let brightness = Math.max(0.55, 1 - correctedDist / 60);
         
-        // Фонарик
         const rayOffset = (i / numRays) - 0.5;
         if (player.flashlight && Math.abs(rayOffset) < 0.4) {
             const falloff = 1 - Math.abs(rayOffset) / 0.4;
@@ -615,25 +614,21 @@ function renderWalls() {
         }
         brightness = Math.min(1.3, brightness);
 
-        // Определяем тип стены — дерево (T) или вода (W)
         const cell = getCell(player.x + Math.cos(rayAngle) * dist, player.z + Math.sin(rayAngle) * dist);
         
         if (cell === 'W') {
-            // Вода — синяя стена (непроходимая граница острова)
             const r = Math.floor(50 * brightness + 20);
             const g = Math.floor(120 * brightness + 40);
             const b = Math.floor(180 * brightness + 40);
             ctx.fillStyle = `rgb(${r},${g},${b})`;
             ctx.fillRect(screenX, wallTop, rayStep + 1, wallHeight);
         } else {
-            // Дерево — коричневый ствол + зелёная крона
             const r = Math.floor(110 * brightness + 20);
             const g = Math.floor(80 * brightness + 25);
             const b = Math.floor(50 * brightness + 15);
             ctx.fillStyle = `rgb(${r},${g},${b})`;
             ctx.fillRect(screenX, wallTop, rayStep + 1, wallHeight);
 
-            // Крона сверху — зелёная (верхние 45%)
             const crownTop = wallTop;
             const crownHeight = wallHeight * 0.45;
             
@@ -643,7 +638,6 @@ function renderWalls() {
             ctx.fillStyle = `rgb(${gr},${gg},${gb})`;
             ctx.fillRect(screenX, crownTop, rayStep + 1, crownHeight);
 
-            // Полоски коры
             if (i % 3 === 0) {
                 ctx.fillStyle = `rgba(0, 0, 0, ${0.15 * brightness})`;
                 ctx.fillRect(screenX, wallTop + crownHeight, 1, wallHeight - crownHeight);
@@ -653,7 +647,7 @@ function renderWalls() {
 }
 
 // ============================================
-// ПОЛ — ЗЕЛЁНАЯ ТРАВА
+// ПОЛ
 // ============================================
 function renderFloor() {
     const horizon = H / 2 + player.pitch * H * 0.8;
@@ -764,7 +758,7 @@ function renderBerries() {
 }
 
 // ============================================
-// ВИНЬЕТКА — мягкая (день)
+// ВИНЬЕТКА
 // ============================================
 function drawVignette() {
     const grad = ctx.createRadialGradient(W/2, H/2, Math.min(W,H) * 0.5, W/2, H/2, Math.max(W,H) * 0.9);
@@ -785,7 +779,7 @@ function renderMinimap() {
     const viewRadius = 7;
     const scale = (size / 2) / viewRadius;
     
-    mmCtx.fillStyle = '#d4d4bc';
+    mmCtx.fillStyle = '#e8e8d0';
     mmCtx.fillRect(0, 0, size, size);
     
     const pgx = player.x / CELL;
@@ -795,20 +789,26 @@ function renderMinimap() {
         for (let dx = -viewRadius; dx <= viewRadius; dx++) {
             const gx = Math.floor(pgx + dx);
             const gz = Math.floor(pgz + dz);
-            if (gx < 0 || gz < 0 || gx >= MAP_SIZE || gz >= MAP_SIZE) continue;
             
-            const cell = MAP[gz][gx];
             const screenX = cx + (dx - (pgx - Math.floor(pgx))) * scale;
             const screenY = cy + (dz - (pgz - Math.floor(pgz))) * scale;
             
+            if (gx < 0 || gz < 0 || gx >= MAP_SIZE || gz >= MAP_SIZE) {
+                mmCtx.fillStyle = '#5a9ac8';
+                mmCtx.fillRect(screenX, screenY, scale + 0.5, scale + 0.5);
+                continue;
+            }
+            
+            const cell = MAP[gz][gx];
+            
             if (cell === 'T') {
-                mmCtx.fillStyle = '#4a8a4a';
+                mmCtx.fillStyle = '#2d6a2d';
             } else if (cell === 'C') {
-                mmCtx.fillStyle = '#ff8833';
+                mmCtx.fillStyle = '#ffaa33';
             } else if (cell === 'W') {
                 mmCtx.fillStyle = '#5a9ac8';
             } else {
-                mmCtx.fillStyle = '#e8e8d0';
+                mmCtx.fillStyle = '#c8e8a0';
             }
             mmCtx.fillRect(screenX, screenY, scale + 0.5, scale + 0.5);
         }
@@ -824,8 +824,11 @@ function renderMinimap() {
         const by = cy + bdz * scale;
         mmCtx.fillStyle = '#ee2244';
         mmCtx.beginPath();
-        mmCtx.arc(bx, by, 3, 0, Math.PI * 2);
+        mmCtx.arc(bx, by, 3.5, 0, Math.PI * 2);
         mmCtx.fill();
+        mmCtx.strokeStyle = '#fff';
+        mmCtx.lineWidth = 1;
+        mmCtx.stroke();
     }
     
     // Костёр
@@ -843,17 +846,17 @@ function renderMinimap() {
         mmCtx.stroke();
     }
     
-    // Игрок
+    // Игрок — стрелка
     mmCtx.save();
     mmCtx.translate(cx, cy);
     mmCtx.rotate(-player.angle);
     mmCtx.fillStyle = '#ee2233';
     mmCtx.strokeStyle = '#fff';
-    mmCtx.lineWidth = 1;
+    mmCtx.lineWidth = 1.5;
     mmCtx.beginPath();
-    mmCtx.moveTo(0, -8);
-    mmCtx.lineTo(-5, 5);
-    mmCtx.lineTo(5, 5);
+    mmCtx.moveTo(0, -9);
+    mmCtx.lineTo(-6, 6);
+    mmCtx.lineTo(6, 6);
     mmCtx.closePath();
     mmCtx.fill();
     mmCtx.stroke();
@@ -869,7 +872,6 @@ const batteryCircle = document.getElementById('battery-circle');
 const berriesCount = document.getElementById('berries-count');
 
 function updateHUD() {
-    // Обводка кружков меняется по значению
     healthCircle.style.borderColor = 
         player.hp > 60 ? '#44ff66' :
         player.hp > 30 ? '#ffcc00' : '#ff2222';
@@ -903,15 +905,16 @@ respawnBtn.addEventListener('click', () => {
     player.hunger = player.maxHunger;
     player.battery = 100;
     player.alive = true;
-    player.x = (MID + 0.5) * CELL + CELL;
+    player.x = (MID + 1.5) * CELL;
     player.z = (MID + 0.5) * CELL;
     player.y = 0; player.vy = 0;
     player.angle = 0; player.pitch = 0;
+    ensurePlayerNotInWall();
     deathScreen.classList.remove('show');
 });
 
 // ============================================
-// ОБНОВЛЕНИЕ — без инерции, чёткое движение
+// ОБНОВЛЕНИЕ
 // ============================================
 let hungerTimer = 0;
 let batteryTimer = 0;
@@ -919,7 +922,6 @@ let batteryTimer = 0;
 function update(dt) {
     if (!player.alive) return;
 
-    // === ЧЁТКОЕ ДВИЖЕНИЕ БЕЗ ИНЕРЦИИ ===
     if (joystick.active) {
         const jx = joystick.dx / joystick.maxDist;
         const jy = joystick.dy / joystick.maxDist;
@@ -928,8 +930,8 @@ function update(dt) {
         const mx = Math.abs(jx) < deadzone ? 0 : jx;
         const my = Math.abs(jy) < deadzone ? 0 : jy;
         
-        const forward = -my;   // вверх = вперёд
-        const strafe = mx;     // влево/вправо = шаг в сторону
+        const forward = -my;
+        const strafe = mx;
         
         const sinA = Math.sin(player.angle);
         const cosA = Math.cos(player.angle);
@@ -941,14 +943,12 @@ function update(dt) {
         if (tryMove(player.x, player.z + moveZ)) player.z += moveZ;
     }
 
-    // Прыжок
     if (!player.onGround) {
         player.vy -= player.gravity * dt;
         player.y += player.vy * dt;
         if (player.y <= 0) { player.y = 0; player.vy = 0; player.onGround = true; }
     }
 
-    // Голод
     hungerTimer += dt;
     if (hungerTimer > 3) {
         hungerTimer = 0;
