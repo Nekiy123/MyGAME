@@ -1,5 +1,5 @@
 // ============================================
-// FOREST — v8 (светлая карта + отзывчивое управление)
+// FOREST — v9 (ДЕНЬ + исправленное движение)
 // ============================================
 
 const canvas = document.getElementById('game-canvas');
@@ -28,7 +28,7 @@ window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 300));
 
 // ============================================
-// БЛОКИРОВКА ОРИЕНТАЦИИ (если поддерживается)
+// БЛОКИРОВКА ОРИЕНТАЦИИ
 // ============================================
 function lockLandscape() {
     if (screen.orientation && 'lock' in screen.orientation) {
@@ -54,16 +54,16 @@ fullscreenBtn.addEventListener('touchstart', (e) => {
 }, { passive: false });
 
 // ============================================
-// ЗВЁЗДЫ
+// ОБЛАКА (для дневного неба)
 // ============================================
-const stars = [];
-for (let i = 0; i < 300; i++) {
-    stars.push({
+const clouds = [];
+for (let i = 0; i < 12; i++) {
+    clouds.push({
         x: Math.random(),
-        y: Math.random() * 0.6,
-        size: Math.random() * 1.8 + 0.3,
-        twinkle: Math.random() * Math.PI * 2,
-        speed: Math.random() * 2 + 0.5
+        y: Math.random() * 0.45,
+        size: Math.random() * 60 + 40,
+        speed: Math.random() * 0.01 + 0.005,
+        alpha: Math.random() * 0.3 + 0.3
     });
 }
 
@@ -103,7 +103,7 @@ function getCell(wx, wz) {
 function isWall(wx, wz) { return getCell(wx, wz) === 'T'; }
 
 // ============================================
-// КОСТЁР
+// КОСТЁР (просто декорация днём)
 // ============================================
 const campfire = {
     x: (MID + 0.5) * CELL,
@@ -135,14 +135,17 @@ for (let i = 0; i < 25; i++) {
 }
 
 // ============================================
-// ИГРОК
+// ИГРОК (медленнее + инерция)
 // ============================================
 const player = {
     x: (MID + 0.5) * CELL + CELL,
     z: (MID + 0.5) * CELL,
     y: 0, vy: 0,
+    vx: 0, vz: 0,          // ← инерция
     height: 1.6,
-    speed: 5,
+    speed: 3.5,            // ← было 5 — естественнее
+    accel: 15,             // ← ускорение
+    friction: 12,          // ← торможение
     angle: 0, pitch: 0,
     onGround: true,
     jumpPower: 6.5,
@@ -180,17 +183,14 @@ function handleJoyStart(e) {
     joystickBase.style.left = (touch.clientX - rect.left - 65) + 'px';
     joystickBase.style.top = (touch.clientY - rect.top - 65) + 'px';
     joystickBase.style.transform = 'none';
-    
-    // Делаем джойстик заметнее при касании
-    joystickBase.style.background = 'rgba(255, 255, 255, 0.15)';
-    joystickBase.style.borderColor = 'rgba(255, 255, 255, 0.5)';
+    joystickBase.style.background = 'rgba(255, 255, 255, 0.2)';
+    joystickBase.style.borderColor = 'rgba(255, 255, 255, 0.6)';
     
     joystick.dx = 0; joystick.dy = 0;
     joystickKnob.style.transform = 'translate(0,0)';
-    joystickKnob.style.background = 'rgba(255, 255, 255, 0.6)';
+    joystickKnob.style.background = 'rgba(255, 255, 255, 0.7)';
     e.preventDefault();
 }
-
 function handleJoyMove(e) {
     if (!joystick.active) return;
     for (let i = 0; i < e.changedTouches.length; i++) {
@@ -199,18 +199,13 @@ function handleJoyMove(e) {
             let dx = t.clientX - joystick.centerX;
             let dy = t.clientY - joystick.centerY;
             const d = Math.hypot(dx, dy);
-            if (d > joystick.maxDist) { 
-                dx = dx / d * joystick.maxDist; 
-                dy = dy / d * joystick.maxDist; 
-            }
-            joystick.dx = dx; 
-            joystick.dy = dy;
+            if (d > joystick.maxDist) { dx = dx / d * joystick.maxDist; dy = dy / d * joystick.maxDist; }
+            joystick.dx = dx; joystick.dy = dy;
             joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
         }
     }
     e.preventDefault();
 }
-
 function handleJoyEnd(e) {
     for (let i = 0; i < e.changedTouches.length; i++) {
         if (e.changedTouches[i].identifier === joystick.touchId) {
@@ -218,8 +213,6 @@ function handleJoyEnd(e) {
             joystick.touchId = null;
             joystick.dx = 0; joystick.dy = 0;
             joystickKnob.style.transform = 'translate(0,0)';
-            
-            // Возвращаем базовый вид
             joystickBase.style.background = 'rgba(255, 255, 255, 0.06)';
             joystickBase.style.borderColor = 'rgba(255, 255, 255, 0.2)';
             joystickKnob.style.background = 'rgba(255, 255, 255, 0.3)';
@@ -227,7 +220,6 @@ function handleJoyEnd(e) {
     }
     e.preventDefault();
 }
-
 joystickZone.addEventListener('touchstart', handleJoyStart, { passive: false });
 joystickZone.addEventListener('touchmove', handleJoyMove, { passive: false });
 joystickZone.addEventListener('touchend', handleJoyEnd, { passive: false });
@@ -247,7 +239,6 @@ function handleLookStart(e) {
     look.lastY = t.clientY;
     e.preventDefault();
 }
-
 function handleLookMove(e) {
     if (!look.active) return;
     for (let i = 0; i < e.changedTouches.length; i++) {
@@ -260,23 +251,19 @@ function handleLookMove(e) {
             const mp = Math.PI / 2 - 0.15;
             if (player.pitch > mp) player.pitch = mp;
             if (player.pitch < -mp) player.pitch = -mp;
-            look.lastX = t.clientX; 
-            look.lastY = t.clientY;
+            look.lastX = t.clientX; look.lastY = t.clientY;
         }
     }
     e.preventDefault();
 }
-
 function handleLookEnd(e) {
     for (let i = 0; i < e.changedTouches.length; i++) {
         if (e.changedTouches[i].identifier === look.touchId) {
-            look.active = false; 
-            look.touchId = null;
+            look.active = false; look.touchId = null;
         }
     }
     e.preventDefault();
 }
-
 lookZone.addEventListener('touchstart', handleLookStart, { passive: false });
 lookZone.addEventListener('touchmove', handleLookMove, { passive: false });
 lookZone.addEventListener('touchend', handleLookEnd, { passive: false });
@@ -284,11 +271,7 @@ lookZone.addEventListener('touchcancel', handleLookEnd, { passive: false });
 
 // Мышь для ПК
 let mouseDown = false;
-lookZone.addEventListener('mousedown', (e) => { 
-    mouseDown = true; 
-    look.lastX = e.clientX; 
-    look.lastY = e.clientY; 
-});
+lookZone.addEventListener('mousedown', (e) => { mouseDown = true; look.lastX = e.clientX; look.lastY = e.clientY; });
 window.addEventListener('mousemove', (e) => {
     if (!mouseDown) return;
     player.angle += (e.clientX - look.lastX) * 0.005;
@@ -296,8 +279,7 @@ window.addEventListener('mousemove', (e) => {
     const mp = Math.PI / 2 - 0.15;
     if (player.pitch > mp) player.pitch = mp;
     if (player.pitch < -mp) player.pitch = -mp;
-    look.lastX = e.clientX; 
-    look.lastY = e.clientY;
+    look.lastX = e.clientX; look.lastY = e.clientY;
 });
 window.addEventListener('mouseup', () => mouseDown = false);
 
@@ -315,24 +297,16 @@ function bindButton(id, onDown) {
         e.preventDefault();
         btn.classList.remove('pressed');
     }, { passive: false });
-    btn.addEventListener('click', (e) => { 
-        e.preventDefault(); 
-        onDown(); 
-    });
+    btn.addEventListener('click', (e) => { e.preventDefault(); onDown(); });
 }
 
 bindButton('jump-button', () => {
     if (!player.alive) return;
-    if (player.onGround) { 
-        player.vy = player.jumpPower; 
-        player.onGround = false; 
-    }
+    if (player.onGround) { player.vy = player.jumpPower; player.onGround = false; }
 });
-
 document.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && player.onGround && player.alive) {
-        player.vy = player.jumpPower; 
-        player.onGround = false;
+        player.vy = player.jumpPower; player.onGround = false;
     }
 });
 
@@ -342,10 +316,7 @@ bindButton('collect-button', () => {
     for (const b of berryBushes) {
         if (b.collected) continue;
         const d = Math.hypot(b.x - player.x, b.z - player.z);
-        if (d < cd) { 
-            cd = d; 
-            closest = b; 
-        }
+        if (d < cd) { cd = d; closest = b; }
     }
     if (closest) {
         closest.collected = true;
@@ -358,10 +329,7 @@ bindButton('collect-button', () => {
 const flashBtn = document.getElementById('flashlight-button');
 bindButton('flashlight-button', () => {
     if (!player.alive) return;
-    if (player.battery <= 0) { 
-        showHint('Батарея разряжена'); 
-        return; 
-    }
+    if (player.battery <= 0) { showHint('Батарея разряжена'); return; }
     player.flashlight = !player.flashlight;
     flashBtn.classList.toggle('active', player.flashlight);
 });
@@ -402,58 +370,74 @@ function tryMove(nx, nz) {
 }
 
 // ============================================
-// НЕБО
+// НЕБО — ДЕНЬ
 // ============================================
 function drawSky() {
     ctx.save();
     const pitchOffset = player.pitch * H * 0.8;
     
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.7);
-    skyGrad.addColorStop(0, '#000010');
-    skyGrad.addColorStop(0.6, '#050518');
-    skyGrad.addColorStop(1, '#0a0a20');
+    // Голубое небо
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+    skyGrad.addColorStop(0, '#4a9ee8');   // верх — насыщенный голубой
+    skyGrad.addColorStop(0.5, '#87ceeb');  // середина — светло-голубой
+    skyGrad.addColorStop(1, '#c8e8f5');    // низ — почти белый
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, W, H);
     
     ctx.translate(0, pitchOffset);
-
+    
+    // Облака
     const time = performance.now() / 1000;
-    const skyOffset = (player.angle / (Math.PI * 2)) * W * 2;
-
-    for (const star of stars) {
-        let sx = (star.x * W * 2 - skyOffset) % (W * 2);
-        if (sx < 0) sx += W * 2;
-        if (sx > W) continue;
-        const sy = star.y * H;
-        const alpha = 0.5 + Math.sin(time * star.speed + star.twinkle) * 0.5;
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = '#fff';
+    const cloudOffset = (player.angle / (Math.PI * 2)) * W * 2;
+    for (const c of clouds) {
+        let cx = ((c.x + time * c.speed) * W * 2 - cloudOffset) % (W * 2);
+        if (cx < -200) cx += W * 2;
+        if (cx > W + 200) continue;
+        const cy = c.y * H;
+        
+        ctx.globalAlpha = c.alpha;
+        ctx.fillStyle = '#ffffff';
+        // Облако из 4 кругов
         ctx.beginPath();
-        ctx.arc(sx, sy, star.size, 0, Math.PI * 2);
+        ctx.arc(cx, cy, c.size * 0.5, 0, Math.PI * 2);
+        ctx.arc(cx + c.size * 0.4, cy - c.size * 0.1, c.size * 0.6, 0, Math.PI * 2);
+        ctx.arc(cx - c.size * 0.4, cy + c.size * 0.05, c.size * 0.45, 0, Math.PI * 2);
+        ctx.arc(cx + c.size * 0.1, cy + c.size * 0.15, c.size * 0.55, 0, Math.PI * 2);
         ctx.fill();
     }
     ctx.globalAlpha = 1;
-
-    const moonX = W / 2, moonY = H * 0.25, moonR = 50;
-    const glow = ctx.createRadialGradient(moonX, moonY, moonR * 0.5, moonX, moonY, moonR * 5);
-    glow.addColorStop(0, 'rgba(220, 220, 255, 0.35)');
-    glow.addColorStop(0.4, 'rgba(180, 180, 220, 0.12)');
-    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = glow;
+    
+    // Солнце
+    const sunX = W / 2;
+    const sunY = H * 0.18;
+    const sunR = 45;
+    
+    // Ореол
+    const sunGlow = ctx.createRadialGradient(sunX, sunY, sunR * 0.5, sunX, sunY, sunR * 6);
+    sunGlow.addColorStop(0, 'rgba(255, 250, 200, 0.9)');
+    sunGlow.addColorStop(0.3, 'rgba(255, 240, 150, 0.4)');
+    sunGlow.addColorStop(1, 'rgba(255, 220, 100, 0)');
+    ctx.fillStyle = sunGlow;
     ctx.beginPath();
-    ctx.arc(moonX, moonY, moonR * 5, 0, Math.PI * 2);
+    ctx.arc(sunX, sunY, sunR * 6, 0, Math.PI * 2);
     ctx.fill();
-
-    ctx.fillStyle = '#e8e8f0';
+    
+    // Диск солнца
+    ctx.fillStyle = '#fff8c0';
     ctx.beginPath();
-    ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
+    ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
     ctx.fill();
-
+    
+    ctx.fillStyle = '#fffde0';
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, sunR * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+    
     ctx.restore();
 }
 
 // ============================================
-// РЕЙКАСТИНГ
+// РЕЙКАСТИНГ — СВЕТЛЫЕ СТВОЛЫ ДЕРЕВЬЕВ
 // ============================================
 const FOV = Math.PI / 3;
 const HALF_FOV = FOV / 2;
@@ -474,7 +458,6 @@ function renderWalls() {
     const horizon = H / 2 + player.pitch * H * 0.8;
     const numRays = Math.floor(W / 3);
     const rayStep = W / numRays;
-    const fireDist = Math.hypot(campfire.x - player.x, campfire.z - player.z);
 
     for (let i = 0; i < numRays; i++) {
         const screenX = i * rayStep;
@@ -484,45 +467,56 @@ function renderWalls() {
         const wallHeight = (CELL * 1.8 * H) / correctedDist * 0.9;
         const wallTop = horizon - wallHeight / 2 + (player.height - 1.6) * H / correctedDist;
 
-        // Яркость — теперь значительно выше
-        let brightness = Math.max(0.15, 1 - correctedDist / 30) * 0.85;
+        // ДНЕВНАЯ ЯРКОСТЬ — почти без затемнения
+        let brightness = Math.max(0.55, 1 - correctedDist / 60);
         
+        // Фонарик днём почти не нужен, но пусть работает
         const rayOffset = (i / numRays) - 0.5;
         if (player.flashlight && Math.abs(rayOffset) < 0.4) {
             const falloff = 1 - Math.abs(rayOffset) / 0.4;
-            brightness += falloff * Math.max(0, 1 - correctedDist / 25) * 0.8;
+            brightness += falloff * Math.max(0, 1 - correctedDist / 25) * 0.3;
         }
-        
-        const fireFalloff = Math.max(0, 1 - fireDist / (campfire.radius * 1.5));
-        brightness += fireFalloff * 0.5;
-        
-        brightness = Math.min(1.2, brightness);
+        brightness = Math.min(1.3, brightness);
 
-        // Дерево — светлее
-        const r = Math.floor(90 * brightness + 30);
-        const g = Math.floor(70 * brightness + 25);
-        const b = Math.floor(45 * brightness + 15);
+        // Дерево — коричневый ствол + зелёная крона
+        // Верхняя часть (крона) — зелёная, нижняя (ствол) — коричневая
+        const r = Math.floor(110 * brightness + 20);
+        const g = Math.floor(80 * brightness + 25);
+        const b = Math.floor(50 * brightness + 15);
 
         ctx.fillStyle = `rgb(${r},${g},${b})`;
         ctx.fillRect(screenX, wallTop, rayStep + 1, wallHeight);
 
+        // Крона сверху (верхняя треть стены — зелёная)
+        const crownTop = wallTop;
+        const crownHeight = wallHeight * 0.35;
+        
+        const gr = Math.floor(60 * brightness + 20);
+        const gg = Math.floor(120 * brightness + 40);
+        const gb = Math.floor(50 * brightness + 20);
+        
+        ctx.fillStyle = `rgb(${gr},${gg},${gb})`;
+        ctx.fillRect(screenX, crownTop, rayStep + 1, crownHeight);
+
+        // Полоски коры — мягче
         if (i % 3 === 0) {
-            ctx.fillStyle = `rgba(0, 0, 0, ${0.2 * brightness})`;
-            ctx.fillRect(screenX, wallTop, 1, wallHeight);
+            ctx.fillStyle = `rgba(0, 0, 0, ${0.15 * brightness})`;
+            ctx.fillRect(screenX, wallTop + crownHeight, 1, wallHeight - crownHeight);
         }
     }
 }
 
 // ============================================
-// ПОЛ
+// ПОЛ — ЗЕЛЁНАЯ ТРАВА
 // ============================================
 function renderFloor() {
     const horizon = H / 2 + player.pitch * H * 0.8;
     
+    // Градиент травы — от тёмно-зелёного у горизонта к светлому
     const floorGrad = ctx.createLinearGradient(0, horizon, 0, H);
-    floorGrad.addColorStop(0, '#1a1510');
-    floorGrad.addColorStop(0.4, '#2a2015');
-    floorGrad.addColorStop(1, '#3a2e1a');
+    floorGrad.addColorStop(0, '#3a5a2a');   // тёмно-зелёный у горизонта
+    floorGrad.addColorStop(0.3, '#5a8a3a'); // средний
+    floorGrad.addColorStop(1, '#7aa84a');   // светлый зелёный снизу
 
     if (horizon < H) {
         ctx.fillStyle = floorGrad;
@@ -533,14 +527,15 @@ function renderFloor() {
     const floorTop = Math.max(0, horizon);
     const camY = player.height + player.y;
     
-    for (let d = 1; d < 25; d++) {
+    // Полосы травы (горизонтальные)
+    for (let d = 1; d < 30; d++) {
         const worldZ = d * CELL;
         const screenY = horizon + (H - horizon) * (camY / (camY + worldZ * 0.7));
         if (screenY < floorTop || screenY > H) continue;
         
-        const alpha = Math.max(0, 1 - d / 20) * 0.35;
+        const alpha = Math.max(0, 1 - d / 25) * 0.2;
         ctx.globalAlpha = alpha;
-        ctx.strokeStyle = '#6a5a3a';
+        ctx.strokeStyle = '#2a4a1a';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(0, screenY);
@@ -568,18 +563,11 @@ function renderCampfire() {
     const size = Math.max(10, 200 / dist);
     const screenY = horizon + (H - horizon) * (1 / (1 + dist * 0.5)) - size * 0.3;
 
-    const glow = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, size * 2);
-    glow.addColorStop(0, `rgba(255, 180, 60, ${Math.max(0, 1 - dist / 15) * 0.9})`);
-    glow.addColorStop(0.5, `rgba(255, 100, 20, ${Math.max(0, 1 - dist / 15) * 0.4})`);
-    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(screenX, screenY, size * 2, 0, Math.PI * 2);
-    ctx.fill();
-
+    // Дым
     const time = performance.now() / 100;
     const flicker = 1 + Math.sin(time) * 0.15;
 
+    // Пламя
     ctx.fillStyle = '#ff6622';
     ctx.beginPath();
     ctx.moveTo(screenX - size * 0.4, screenY + size * 0.5);
@@ -617,12 +605,14 @@ function renderBerries() {
         const screenY = horizon + (H - horizon) * (player.height / (player.height + dist * 0.5));
         const size = Math.max(4, 80 / dist);
 
-        ctx.fillStyle = `rgba(30, ${Math.min(80, Math.floor(60 + 100 / dist))}, 20, 0.9)`;
+        // Куст
+        ctx.fillStyle = `rgba(40, 130, 30, 0.95)`;
         ctx.beginPath();
         ctx.arc(screenX, screenY - size * 0.3, size * 0.8, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = '#cc2233';
+        // Ягоды
+        ctx.fillStyle = '#ee2244';
         for (let k = 0; k < 3; k++) {
             const ox = Math.cos(k * 2.1) * size * 0.5;
             const oy = Math.sin(k * 2.1) * size * 0.4 - size * 0.3;
@@ -634,29 +624,26 @@ function renderBerries() {
 }
 
 // ============================================
-// ВИНЬЕТКА
+// ВИНЬЕТКА — ЛЁГКАЯ (день!)
 // ============================================
 function drawVignette() {
-    let darkness = 0.35;
-    if (player.flashlight) darkness = 0.2;
-    
-    const fireDist = Math.hypot(campfire.x - player.x, campfire.z - player.z);
-    if (fireDist < campfire.radius) {
-        darkness -= 0.15 * (1 - fireDist / campfire.radius);
-    }
+    // Днём почти нет затемнения
+    let darkness = 0.08;
+    if (player.flashlight) darkness = 0.05;
 
-    ctx.fillStyle = `rgba(0, 0, 0, ${Math.max(0, darkness)})`;
+    ctx.fillStyle = `rgba(0, 0, 0, ${darkness})`;
     ctx.fillRect(0, 0, W, H);
 
-    const grad = ctx.createRadialGradient(W/2, H/2, Math.min(W,H) * 0.4, W/2, H/2, Math.max(W,H) * 0.8);
+    // Очень мягкая виньетка по краям
+    const grad = ctx.createRadialGradient(W/2, H/2, Math.min(W,H) * 0.5, W/2, H/2, Math.max(W,H) * 0.9);
     grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.5)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.3)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 }
 
 // ============================================
-// МИНИКАРТА (СВЕТЛАЯ)
+// МИНИКАРТА
 // ============================================
 function renderMinimap() {
     const size = minimap.width;
@@ -670,7 +657,6 @@ function renderMinimap() {
     mmCtx.fillStyle = '#d4d4bc';
     mmCtx.fillRect(0, 0, size, size);
     
-    // Карта
     const pgx = player.x / CELL;
     const pgz = player.z / CELL;
     
@@ -685,7 +671,7 @@ function renderMinimap() {
             const screenY = cy + (dz - (pgz - Math.floor(pgz))) * scale;
             
             if (cell === 'T') {
-                mmCtx.fillStyle = '#5a9a5a';
+                mmCtx.fillStyle = '#4a8a4a';
             } else if (cell === 'C') {
                 mmCtx.fillStyle = '#ff8833';
             } else {
@@ -727,7 +713,7 @@ function renderMinimap() {
         mmCtx.stroke();
     }
     
-    // Игрок
+    // Игрок — стрелка
     mmCtx.save();
     mmCtx.translate(cx, cy);
     mmCtx.rotate(-player.angle);
@@ -743,10 +729,10 @@ function renderMinimap() {
     mmCtx.stroke();
     mmCtx.restore();
     
-    // Виньетка
+    // Виньетка по краям
     const radial = mmCtx.createRadialGradient(cx, cy, size * 0.4, cx, cy, size * 0.5);
     radial.addColorStop(0, 'rgba(0,0,0,0)');
-    radial.addColorStop(1, 'rgba(0,0,0,0.35)');
+    radial.addColorStop(1, 'rgba(0,0,0,0.3)');
     mmCtx.fillStyle = radial;
     mmCtx.fillRect(0, 0, size, size);
 }
@@ -787,12 +773,13 @@ respawnBtn.addEventListener('click', () => {
     player.x = (MID + 0.5) * CELL + CELL;
     player.z = (MID + 0.5) * CELL;
     player.y = 0; player.vy = 0;
+    player.vx = 0; player.vz = 0;
     player.angle = 0; player.pitch = 0;
     deathScreen.classList.remove('show');
 });
 
 // ============================================
-// ОБНОВЛЕНИЕ
+// ОБНОВЛЕНИЕ (с инерцией)
 // ============================================
 let hungerTimer = 0;
 let batteryTimer = 0;
@@ -800,39 +787,54 @@ let batteryTimer = 0;
 function update(dt) {
     if (!player.alive) return;
 
+    // === ДВИЖЕНИЕ С ИНЕРЦИЕЙ ===
+    let targetVx = 0, targetVz = 0;
+    
     if (joystick.active) {
         const jx = joystick.dx / joystick.maxDist;
         const jy = joystick.dy / joystick.maxDist;
         
-        // Мёртвая зона 0.1
-        const deadzone = 0.1;
+        const deadzone = 0.12;
         const mx = Math.abs(jx) < deadzone ? 0 : jx;
         const my = Math.abs(jy) < deadzone ? 0 : jy;
         
-        // Вверх = -my (вперёд), вниз = +my (назад)
+        // Вверх = вперёд (my < 0 → forward > 0)
         const forward = -my;
         const strafe = mx;
         
         const sinA = Math.sin(player.angle);
         const cosA = Math.cos(player.angle);
         
-        const moveX = (sinA * forward + cosA * strafe) * player.speed * dt;
-        const moveZ = (cosA * forward - sinA * strafe) * player.speed * dt;
-        
-        if (tryMove(player.x + moveX, player.z)) player.x += moveX;
-        if (tryMove(player.x, player.z + moveZ)) player.z += moveZ;
+        // Целевая скорость
+        targetVx = (sinA * forward + cosA * strafe) * player.speed;
+        targetVz = (cosA * forward - sinA * strafe) * player.speed;
     }
+    
+    // Плавный переход к целевой скорости (инерция)
+    player.vx += (targetVx - player.vx) * player.accel * dt;
+    player.vz += (targetVz - player.vz) * player.accel * dt;
+    
+    // Если почти остановились — обнуляем (убираем дрожание)
+    if (Math.abs(player.vx) < 0.02) player.vx = 0;
+    if (Math.abs(player.vz) < 0.02) player.vz = 0;
+    
+    // Применяем движение
+    const moveX = player.vx * dt;
+    const moveZ = player.vz * dt;
+    if (tryMove(player.x + moveX, player.z)) player.x += moveX;
+    else player.vx = 0;
+    
+    if (tryMove(player.x, player.z + moveZ)) player.z += moveZ;
+    else player.vz = 0;
 
+    // === ПРЫЖОК ===
     if (!player.onGround) {
         player.vy -= player.gravity * dt;
         player.y += player.vy * dt;
-        if (player.y <= 0) { 
-            player.y = 0; 
-            player.vy = 0; 
-            player.onGround = true; 
-        }
+        if (player.y <= 0) { player.y = 0; player.vy = 0; player.onGround = true; }
     }
 
+    // === ГОЛОД ===
     hungerTimer += dt;
     if (hungerTimer > 3) {
         hungerTimer = 0;
@@ -844,11 +846,13 @@ function update(dt) {
         if (player.hp <= 0) die('Ты умер от голода');
     }
 
+    // === КОСТЁР: восстановление ===
     const fireDist = Math.hypot(campfire.x - player.x, campfire.z - player.z);
     if (fireDist < campfire.radius && player.hunger > 50) {
         player.hp = Math.min(player.maxHp, player.hp + 3 * dt);
     }
 
+    // === БАТАРЕЯ ФОНАРИКА ===
     if (player.flashlight) {
         batteryTimer += dt;
         if (batteryTimer > 0.5) {
@@ -862,6 +866,7 @@ function update(dt) {
         }
     }
 
+    // === РЕСПАВН ЯГОД ===
     const now = performance.now();
     for (const b of berryBushes) {
         if (b.collected && now > b.respawnAt) b.collected = false;
@@ -874,8 +879,6 @@ function update(dt) {
 // РЕНДЕР
 // ============================================
 function render() {
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, W, H);
     drawSky();
     renderFloor();
     renderWalls();
