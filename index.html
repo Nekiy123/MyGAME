@@ -10,33 +10,36 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="rotate-overlay">
-        <div class="rotate-icon">📱</div>
-        <div class="rotate-text">Поверни телефон горизонтально</div>
-    </div>
-
     <div id="game-container">
         <canvas id="game-canvas"></canvas>
         
-        <!-- HUD -->
-        <div id="hud">
-            <div class="bar-container">
-                <div class="bar-label">❤️</div>
-                <div class="bar"><div id="health-bar" class="bar-fill health"></div></div>
+        <!-- МИНИКАРТА (слева вверху) -->
+        <div id="minimap-wrap">
+            <canvas id="minimap"></canvas>
+            <div id="minimap-north">N</div>
+        </div>
+        
+        <!-- HUD справа от карты: иконки + маленькие полоски -->
+        <div id="hud-icons">
+            <div class="hud-item">
+                <span class="hud-icon">❤️</span>
+                <div class="mini-bar"><div id="health-bar" class="mini-fill health"></div></div>
             </div>
-            <div class="bar-container">
-                <div class="bar-label">🍖</div>
-                <div class="bar"><div id="hunger-bar" class="bar-fill hunger"></div></div>
+            <div class="hud-item">
+                <span class="hud-icon">🍖</span>
+                <div class="mini-bar"><div id="hunger-bar" class="mini-fill hunger"></div></div>
             </div>
-            <div class="bar-container">
-                <div class="bar-label">🔋</div>
-                <div class="bar"><div id="battery-bar" class="bar-fill battery"></div></div>
+            <div class="hud-item">
+                <span class="hud-icon">🔋</span>
+                <div class="mini-bar"><div id="battery-bar" class="mini-fill battery"></div></div>
             </div>
-            <div id="resources">
+            <div class="hud-item resources">
                 <span>🍓 <b id="berries">0</b></span>
             </div>
-            <div id="hint"></div>
         </div>
+
+        <!-- Подсказка -->
+        <div id="hint"></div>
 
         <!-- Джойстик -->
         <div id="joystick-zone">
@@ -68,4 +71,4 @@
     
     <script src="game.js"></script>
 </body>
-            </html>
+                                          </html>
