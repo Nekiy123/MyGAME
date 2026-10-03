@@ -18,24 +18,34 @@ html, body {
     overscroll-behavior: none;
 }
 
+/* ОВЕРЛЕЙ: поверни телефон */
+#rotate-overlay {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    color: #fff;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    gap: 20px;
+}
+#rotate-overlay .rotate-icon { font-size: 80px; animation: rotateAnim 2s ease-in-out infinite; }
+#rotate-overlay .rotate-text { font-size: 20px; color: #aaa; letter-spacing: 1px; }
+@keyframes rotateAnim {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+}
+@media (orientation: portrait) {
+    #rotate-overlay { display: flex; }
+    #game-container { display: none; }
+}
+
 #game-container {
     position: fixed;
     inset: 0;
     overflow: hidden;
-}
-
-/* ============================================
-   ФОРС-ПОВОРОТ (если нет гироскопа)
-   ============================================ */
-body.force-landscape #game-container {
-    width: 100vh;
-    height: 100vw;
-    transform: rotate(90deg);
-    transform-origin: top left;
-    top: 0;
-    left: 100vw;
-    margin-left: -100vh;
-    position: fixed;
 }
 
 #game-canvas {
@@ -45,110 +55,101 @@ body.force-landscape #game-container {
 }
 
 /* ============================================
-   МИНИКАРТА
+   МИНИКАРТА + иконки вокруг
    ============================================ */
 #minimap-wrap {
     position: absolute;
-    top: 10px;
-    left: 10px;
+    top: 12px;
+    left: 12px;
     width: 130px;
     height: 130px;
     border-radius: 50%;
-    overflow: hidden;
-    border: 2px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 0 12px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(0, 0, 0, 0.4);
-    background: #2a2a2a;
+    overflow: visible;
     z-index: 20;
     pointer-events: none;
 }
 
 #minimap {
-    width: 100%;
-    height: 100%;
+    width: 130px;
+    height: 130px;
     display: block;
     border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 0 14px rgba(0, 0, 0, 0.9);
+    background: #d4d4bc;
+    pointer-events: auto;
+    cursor: pointer;
 }
 
-#minimap-north {
+/* Кружки вокруг миникарты (как на фото 2) */
+.hud-circle {
     position: absolute;
-    top: 4px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: #fff;
-    font-size: 11px;
-    font-weight: bold;
-    text-shadow: 0 0 4px #000, 0 0 8px #000;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
     pointer-events: none;
-    z-index: 2;
 }
 
-/* ============================================
-   HUD ИКОНКИ (справа от карты)
-   ============================================ */
-#hud-icons {
-    position: absolute;
+/* Расположение кружков по дуге справа сверху */
+.health-circle {
+    top: -6px;
+    right: 20px;
+    border-color: #ff4455;
+}
+.hunger-circle {
     top: 12px;
-    left: 155px;   /* сразу после карты */
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
-    z-index: 20;
-    pointer-events: none;
+    right: -8px;
+    border-color: #ffaa33;
 }
-
-.hud-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: rgba(0, 0, 0, 0.45);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 12px;
-    padding: 3px 8px;
-    backdrop-filter: blur(4px);
+.battery-circle {
+    top: 48px;
+    right: -22px;
+    border-color: #33bbff;
+}
+.berries-circle {
+    top: 84px;
+    right: -10px;
+    border-color: #ff4477;
 }
 
 .hud-icon {
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1;
 }
 
-.mini-bar {
-    width: 44px;
-    height: 7px;
-    background: rgba(0, 0, 0, 0.6);
-    border-radius: 4px;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.mini-fill {
-    height: 100%;
-    width: 100%;
-    transition: width 0.2s;
-    border-radius: 3px;
-}
-
-.mini-fill.health { background: linear-gradient(90deg, #b00, #f44); }
-.mini-fill.hunger { background: linear-gradient(90deg, #a60, #fb0); }
-.mini-fill.battery { background: linear-gradient(90deg, #06a, #0cf); }
-
-.hud-item.resources {
+.hud-count {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: #ff2244;
     color: #fff;
-    font-size: 13px;
-    padding: 4px 10px;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 1px 4px;
+    border-radius: 8px;
+    min-width: 14px;
+    text-align: center;
+    border: 1px solid #fff;
 }
 
 /* ============================================
-   Подсказка
+   ПОДСКАЗКА
    ============================================ */
 #hint {
     position: absolute;
     top: 55px;
     left: 50%;
     transform: translateX(-50%);
-    color: #ffd;
-    font-size: 14px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: bold;
     text-shadow: 0 0 8px #000, 0 0 12px #000;
     transition: opacity 0.3s;
     opacity: 0;
@@ -158,7 +159,7 @@ body.force-landscape #game-container {
 #hint.show { opacity: 1; }
 
 /* ============================================
-   Джойстик
+   ДЖОЙСТИК
    ============================================ */
 #joystick-zone {
     position: absolute;
@@ -196,7 +197,7 @@ body.force-landscape #game-container {
 }
 
 /* ============================================
-   Обзор
+   ОБЗОР
    ============================================ */
 #look-zone {
     position: absolute;
@@ -209,7 +210,7 @@ body.force-landscape #game-container {
 }
 
 /* ============================================
-   Кнопки действий
+   КНОПКИ
    ============================================ */
 #action-buttons {
     position: absolute;
@@ -228,7 +229,7 @@ body.force-landscape #game-container {
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.08);
     border: 2px solid rgba(255, 255, 255, 0.3);
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -236,22 +237,23 @@ body.force-landscape #game-container {
     touch-action: none;
     transition: background 0.1s, transform 0.1s;
     pointer-events: auto;
+    text-shadow: 0 0 6px #000;
 }
 
 .action-btn:active,
 .action-btn.pressed {
-    background: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.4);
     transform: scale(0.9);
 }
 
 .action-btn.active {
-    background: rgba(255, 220, 100, 0.4);
-    border-color: rgba(255, 220, 100, 0.9);
-    box-shadow: 0 0 15px rgba(255, 220, 100, 0.5);
+    background: rgba(255, 220, 100, 0.5);
+    border-color: rgba(255, 220, 100, 0.95);
+    box-shadow: 0 0 15px rgba(255, 220, 100, 0.6);
 }
 
 /* ============================================
-   Полный экран
+   ПОЛНЫЙ ЭКРАН
    ============================================ */
 #fullscreen-btn {
     position: absolute;
@@ -261,8 +263,8 @@ body.force-landscape #game-container {
     height: 44px;
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    color: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -270,10 +272,10 @@ body.force-landscape #game-container {
     z-index: 30;
     touch-action: none;
 }
-#fullscreen-btn:active { background: rgba(255, 255, 255, 0.25); }
+#fullscreen-btn:active { background: rgba(255, 255, 255, 0.3); }
 
 /* ============================================
-   Прицел
+   ПРИЦЕЛ
    ============================================ */
 #crosshair {
     position: absolute;
@@ -283,14 +285,14 @@ body.force-landscape #game-container {
     height: 8px;
     border-radius: 50%;
     background: #00ff44;
-    box-shadow: 0 0 10px #00ff44, 0 0 20px rgba(0, 255, 68, 0.6);
+    box-shadow: 0 0 10px #00ff44;
     transform: translate(-50%, -50%);
     pointer-events: none;
     z-index: 5;
 }
 
 /* ============================================
-   Вспышка урона
+   ВСПЫШКА УРОНА
    ============================================ */
 #damage-flash {
     position: absolute;
@@ -303,7 +305,46 @@ body.force-landscape #game-container {
 #damage-flash.hit { background: rgba(200, 0, 0, 0.4); }
 
 /* ============================================
-   Экран смерти
+   ПОЛНАЯ КАРТА
+   ============================================ */
+#fullmap-screen {
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 40, 80, 0.95);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 300;
+    gap: 15px;
+}
+#fullmap-screen.show { display: flex; }
+
+.fullmap-title {
+    color: #fff;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    text-shadow: 0 0 10px #000;
+}
+
+#fullmap-canvas {
+    max-width: 85vw;
+    max-height: 75vh;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    border-radius: 8px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.9);
+    background: #7a9a8a;
+}
+
+.fullmap-hint {
+    color: #ccc;
+    font-size: 13px;
+    letter-spacing: 1px;
+}
+
+/* ============================================
+   ЭКРАН СМЕРТИ
    ============================================ */
 #death-screen {
     position: absolute;
