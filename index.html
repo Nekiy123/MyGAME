@@ -10,35 +10,33 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="rotate-overlay">
+        <div class="rotate-icon">📱</div>
+        <div class="rotate-text">Поверни телефон горизонтально</div>
+    </div>
+
     <div id="game-container">
         <canvas id="game-canvas"></canvas>
         
-        <!-- МИНИКАРТА (слева вверху) -->
+        <!-- МИНИКАРТА с иконками вокруг -->
         <div id="minimap-wrap">
             <canvas id="minimap"></canvas>
-            <div id="minimap-north">N</div>
+            <!-- Новые значки вокруг миникарты -->
+            <div class="hud-circle health-circle" id="health-circle">
+                <span class="hud-icon">❤️</span>
+            </div>
+            <div class="hud-circle hunger-circle" id="hunger-circle">
+                <span class="hud-icon">🍖</span>
+            </div>
+            <div class="hud-circle battery-circle" id="battery-circle">
+                <span class="hud-icon">🔋</span>
+            </div>
+            <div class="hud-circle berries-circle" id="berries-circle">
+                <span class="hud-icon">🍓</span>
+                <span class="hud-count" id="berries-count">0</span>
+            </div>
         </div>
         
-        <!-- HUD справа от карты: иконки + маленькие полоски -->
-        <div id="hud-icons">
-            <div class="hud-item">
-                <span class="hud-icon">❤️</span>
-                <div class="mini-bar"><div id="health-bar" class="mini-fill health"></div></div>
-            </div>
-            <div class="hud-item">
-                <span class="hud-icon">🍖</span>
-                <div class="mini-bar"><div id="hunger-bar" class="mini-fill hunger"></div></div>
-            </div>
-            <div class="hud-item">
-                <span class="hud-icon">🔋</span>
-                <div class="mini-bar"><div id="battery-bar" class="mini-fill battery"></div></div>
-            </div>
-            <div class="hud-item resources">
-                <span>🍓 <b id="berries">0</b></span>
-            </div>
-        </div>
-
-        <!-- Подсказка -->
         <div id="hint"></div>
 
         <!-- Джойстик -->
@@ -49,7 +47,7 @@
         <!-- Обзор -->
         <div id="look-zone"></div>
         
-        <!-- Кнопки справа -->
+        <!-- Кнопки действий -->
         <div id="action-buttons">
             <div class="action-btn" id="jump-button">⤒</div>
             <div class="action-btn" id="collect-button">✋</div>
@@ -61,6 +59,13 @@
         <div id="crosshair"></div>
         <div id="damage-flash"></div>
         
+        <!-- ПОЛНАЯ КАРТА (открывается тапом на миникарту) -->
+        <div id="fullmap-screen">
+            <div class="fullmap-title">КАРТА ОСТРОВА</div>
+            <canvas id="fullmap-canvas"></canvas>
+            <div class="fullmap-hint">Нажми, чтобы закрыть</div>
+        </div>
+        
         <!-- Экран смерти -->
         <div id="death-screen">
             <div class="death-title">ТЫ ПОГИБ</div>
@@ -71,4 +76,4 @@
     
     <script src="game.js"></script>
 </body>
-                                          </html>
+        </html>
