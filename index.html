@@ -6,12 +6,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="screen-orientation" content="landscape">
-    <meta name="x5-orientation" content="landscape">
-    <title>Horror Game</title>
+    <title>Forest — Prototype</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Экран поворота телефона -->
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <div class="rotate-text">Поверни телефон горизонтально</div>
@@ -20,23 +18,54 @@
     <div id="game-container">
         <canvas id="game-canvas"></canvas>
         
-        <!-- Джойстик слева -->
-        <div id="joystick-zone">
-            <div id="joystick-base">
-                <div id="joystick-knob"></div>
+        <!-- HUD -->
+        <div id="hud">
+            <div class="bar-container">
+                <div class="bar-label">❤️</div>
+                <div class="bar"><div id="health-bar" class="bar-fill health"></div></div>
             </div>
+            <div class="bar-container">
+                <div class="bar-label">🍖</div>
+                <div class="bar"><div id="hunger-bar" class="bar-fill hunger"></div></div>
+            </div>
+            <div class="bar-container">
+                <div class="bar-label">🔋</div>
+                <div class="bar"><div id="battery-bar" class="bar-fill battery"></div></div>
+            </div>
+            <div id="resources">
+                <span>🍓 <b id="berries">0</b></span>
+            </div>
+            <div id="hint"></div>
+        </div>
+
+        <!-- Джойстик -->
+        <div id="joystick-zone">
+            <div id="joystick-base"><div id="joystick-knob"></div></div>
         </div>
         
-        <!-- Зона обзора (правая часть экрана) -->
+        <!-- Обзор -->
         <div id="look-zone"></div>
         
-        <!-- Кнопка прыжка справа -->
-        <div id="jump-button">JUMP</div>
+        <!-- Кнопки справа -->
+        <div id="action-buttons">
+            <div class="action-btn" id="jump-button">⤒</div>
+            <div class="action-btn" id="collect-button">✋</div>
+            <div class="action-btn" id="flashlight-button">🔦</div>
+            <div class="action-btn" id="eat-button">🍓</div>
+        </div>
         
-        <!-- Прицел по центру -->
+        <div id="fullscreen-btn">⛶</div>
         <div id="crosshair"></div>
+        <div id="damage-flash"></div>
+        
+        <!-- Экран смерти -->
+        <div id="death-screen">
+            <div class="death-title">ТЫ ПОГИБ</div>
+            <div class="death-reason" id="death-reason">Голод</div>
+            <button id="respawn-btn">Возродиться</button>
+        </div>
     </div>
     
     <script src="game.js"></script>
 </body>
-    </html>
+            </html>
