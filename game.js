@@ -1,5 +1,5 @@
 // ============================================
-// FOREST — v11 (исправлен чёрный экран + светлая карта)
+// FOREST — v12 (с отладкой координат)
 // ============================================
 
 const canvas = document.getElementById('game-canvas');
@@ -8,6 +8,7 @@ const minimap = document.getElementById('minimap');
 const mmCtx = minimap.getContext('2d');
 const fullmapCanvas = document.getElementById('fullmap-canvas');
 const fmCtx = fullmapCanvas.getContext('2d');
+const debugEl = document.getElementById('debug');
 
 let W = window.innerWidth;
 let H = window.innerHeight;
@@ -75,20 +76,17 @@ for (let z = 0; z < MAP_SIZE; z++) {
     for (let x = 0; x < MAP_SIZE; x++) {
         const distFromEdge = Math.min(x, z, MAP_SIZE - 1 - x, MAP_SIZE - 1 - z);
         
-        // 2 клетки от края — вода
         if (distFromEdge < 2) {
             row += 'W';
             continue;
         }
         
-        // Стартовая поляна 7×7 вокруг центра
         const distToCenter = Math.hypot(x - MID, z - MID);
         if (distToCenter < 3.5) {
             row += '.';
             continue;
         }
         
-        // Поляна вокруг старта игрока
         const startX = MID + 1;
         const startZ = MID;
         if (Math.abs(x - startX) <= 2 && Math.abs(z - startZ) <= 2) {
@@ -96,7 +94,6 @@ for (let z = 0; z < MAP_SIZE; z++) {
             continue;
         }
         
-        // Обычный лес — 25% плотности
         if (Math.random() < 0.25) {
             row += 'T';
         } else {
@@ -106,7 +103,6 @@ for (let z = 0; z < MAP_SIZE; z++) {
     MAP.push(row);
 }
 
-// Костёр в центре
 MAP[MID] = MAP[MID].substring(0, MID) + 'C' + MAP[MID].substring(MID + 1);
 
 function getCell(wx, wz) {
@@ -175,7 +171,6 @@ const player = {
     battery: 100
 };
 
-// Проверка: игрок не в стене
 function ensurePlayerNotInWall() {
     if (isWall(player.x, player.z)) {
         player.x = (MID + 0.5) * CELL;
@@ -295,7 +290,6 @@ lookZone.addEventListener('touchmove', handleLookMove, { passive: false });
 lookZone.addEventListener('touchend', handleLookEnd, { passive: false });
 lookZone.addEventListener('touchcancel', handleLookEnd, { passive: false });
 
-// Мышь для ПК
 let mouseDown = false;
 lookZone.addEventListener('mousedown', (e) => { mouseDown = true; look.lastX = e.clientX; look.lastY = e.clientY; });
 window.addEventListener('mousemove', (e) => {
@@ -345,11 +339,9 @@ function drawFullmap() {
     
     const cs = size / MAP_SIZE;
     
-    // Фон — вода
     fmCtx.fillStyle = '#5a9ac8';
     fmCtx.fillRect(0, 0, size, size);
     
-    // Остров
     for (let z = 0; z < MAP_SIZE; z++) {
         for (let x = 0; x < MAP_SIZE; x++) {
             const cell = MAP[z][x];
@@ -365,7 +357,6 @@ function drawFullmap() {
         }
     }
     
-    // Ягоды
     for (const b of berryBushes) {
         if (b.collected) continue;
         const bx = (b.x / CELL) * cs;
@@ -376,7 +367,6 @@ function drawFullmap() {
         fmCtx.fill();
     }
     
-    // Костёр
     const cx = (campfire.x / CELL) * cs;
     const cz = (campfire.z / CELL) * cs;
     fmCtx.fillStyle = '#ffcc00';
@@ -387,7 +377,6 @@ function drawFullmap() {
     fmCtx.lineWidth = 2;
     fmCtx.stroke();
     
-    // Игрок — красная стрелка
     const px = (player.x / CELL) * cs;
     const pz = (player.z / CELL) * cs;
     
@@ -416,7 +405,6 @@ function drawFullmap() {
     fmCtx.stroke();
     fmCtx.restore();
     
-    // N
     fmCtx.fillStyle = '#fff';
     fmCtx.font = 'bold 16px Arial';
     fmCtx.textAlign = 'center';
@@ -513,7 +501,7 @@ function tryMove(nx, nz) {
 }
 
 // ============================================
-// НЕБО — ДЕНЬ
+// НЕБО
 // ============================================
 function drawSky() {
     ctx.save();
@@ -563,11 +551,6 @@ function drawSky() {
     ctx.fillStyle = '#fff8c0';
     ctx.beginPath();
     ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
-    ctx.fill();
-    
-    ctx.fillStyle = '#fffde0';
-    ctx.beginPath();
-    ctx.arc(sunX, sunY, sunR * 0.7, 0, Math.PI * 2);
     ctx.fill();
     
     ctx.restore();
@@ -637,11 +620,6 @@ function renderWalls() {
             const gb = Math.floor(50 * brightness + 20);
             ctx.fillStyle = `rgb(${gr},${gg},${gb})`;
             ctx.fillRect(screenX, crownTop, rayStep + 1, crownHeight);
-
-            if (i % 3 === 0) {
-                ctx.fillStyle = `rgba(0, 0, 0, ${0.15 * brightness})`;
-                ctx.fillRect(screenX, wallTop + crownHeight, 1, wallHeight - crownHeight);
-            }
         }
     }
 }
@@ -814,7 +792,6 @@ function renderMinimap() {
         }
     }
     
-    // Ягоды
     for (const b of berryBushes) {
         if (b.collected) continue;
         const bdx = (b.x - player.x) / CELL;
@@ -831,7 +808,6 @@ function renderMinimap() {
         mmCtx.stroke();
     }
     
-    // Костёр
     const cdx = (campfire.x - player.x) / CELL;
     const cdz = (campfire.z - player.z) / CELL;
     if (Math.hypot(cdx, cdz) <= viewRadius) {
@@ -846,7 +822,6 @@ function renderMinimap() {
         mmCtx.stroke();
     }
     
-    // Игрок — стрелка
     mmCtx.save();
     mmCtx.translate(cx, cy);
     mmCtx.rotate(-player.angle);
@@ -864,7 +839,7 @@ function renderMinimap() {
 }
 
 // ============================================
-// HUD
+// HUD + ОТЛАДКА
 // ============================================
 const healthCircle = document.getElementById('health-circle');
 const hungerCircle = document.getElementById('hunger-circle');
@@ -885,6 +860,17 @@ function updateHUD() {
         player.battery > 30 ? '#ffcc00' : '#ff2222';
     
     berriesCount.textContent = player.berries;
+    
+    // === ОТЛАДКА ===
+    const cellX = Math.floor(player.x / CELL);
+    const cellZ = Math.floor(player.z / CELL);
+    let cellType = '?';
+    if (cellX >= 0 && cellZ >= 0 && cellX < MAP_SIZE && cellZ < MAP_SIZE) {
+        cellType = MAP[cellZ][cellX];
+    }
+    
+    debugEl.textContent = 
+        `X:${player.x.toFixed(1)} Z:${player.z.toFixed(1)} | Клетка: ${cellX},${cellZ} = "${cellType}" | Карта ${MAP_SIZE}x${MAP_SIZE}`;
 }
 
 // ============================================
