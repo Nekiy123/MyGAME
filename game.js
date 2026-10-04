@@ -1,5 +1,5 @@
 // ============================================
-// FOREST — v12 (с отладкой координат)
+// FOREST — v13 (заставка, настройки, деревья, статичная карта)
 // ============================================
 
 const canvas = document.getElementById('game-canvas');
@@ -9,6 +9,7 @@ const mmCtx = minimap.getContext('2d');
 const fullmapCanvas = document.getElementById('fullmap-canvas');
 const fmCtx = fullmapCanvas.getContext('2d');
 const debugEl = document.getElementById('debug');
+const debugText = document.getElementById('debug-text');
 
 let W = window.innerWidth;
 let H = window.innerHeight;
@@ -27,6 +28,21 @@ window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 300));
 
 // ============================================
+// НАСТРОЙКИ (сохраняются в localStorage)
+// ============================================
+const settings = {
+    fov: parseInt(localStorage.getItem('fov')) || 70,
+    showCoords: localStorage.getItem('showCoords') === 'true',
+    showCrosshair: localStorage.getItem('showCrosshair') !== 'false'
+};
+
+function saveSettings() {
+    localStorage.setItem('fov', settings.fov);
+    localStorage.setItem('showCoords', settings.showCoords);
+    localStorage.setItem('showCrosshair', settings.showCrosshair);
+}
+
+// ============================================
 // ОРИЕНТАЦИЯ
 // ============================================
 function lockLandscape() {
@@ -37,6 +53,35 @@ function lockLandscape() {
 lockLandscape();
 document.addEventListener('touchstart', () => lockLandscape(), { once: true });
 
+// ============================================
+// ЗАСТАВКА
+// ============================================
+const splashScreen = document.getElementById('splash-screen');
+let gameStarted = false;
+
+splashScreen.addEventListener('click', startGame);
+splashScreen.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    startGame();
+}, { passive: false });
+
+function startGame() {
+    if (gameStarted) return;
+    gameStarted = true;
+    splashScreen.classList.add('hide');
+    setTimeout(() => {
+        splashScreen.style.display = 'none';
+    }, 800);
+}
+
+// Автозапуск через 4 секунды
+setTimeout(() => {
+    if (!gameStarted) startGame();
+}, 4000);
+
+// ============================================
+// КНОПКИ УПРАВЛЕНИЯ
+// ============================================
 const fullscreenBtn = document.getElementById('fullscreen-btn');
 fullscreenBtn.addEventListener('touchstart', (e) => {
     e.preventDefault();
@@ -48,6 +93,55 @@ fullscreenBtn.addEventListener('touchstart', (e) => {
         (document.exitFullscreen || document.webkitExitFullscreen).call(document);
     }
 }, { passive: false });
+
+// Настройки
+const settingsBtn = document.getElementById('settings-btn');
+const settingsScreen = document.getElementById('settings-screen');
+const settingsClose = document.getElementById('settings-close');
+const fovSlider = document.getElementById('fov-slider');
+const fovValue = document.getElementById('fov-value');
+const coordsToggle = document.getElementById('coords-toggle');
+const crosshairToggle = document.getElementById('crosshair-toggle');
+
+settingsBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    settingsScreen.classList.add('show');
+}, { passive: false });
+
+settingsClose.addEventListener('click', () => {
+    settingsScreen.classList.remove('show');
+    saveSettings();
+});
+
+fovSlider.value = settings.fov;
+fovValue.textContent = settings.fov + '°';
+
+fovSlider.addEventListener('input', () => {
+    settings.fov = parseInt(fovSlider.value);
+    fovValue.textContent = settings.fov + '°';
+});
+
+// Toggles
+if (settings.showCoords) coordsToggle.classList.add('on');
+if (settings.showCrosshair) crosshairToggle.classList.add('on');
+
+coordsToggle.addEventListener('click', () => {
+    settings.showCoords = !settings.showCoords;
+    coordsToggle.classList.toggle('on', settings.showCoords);
+    debugEl.style.display = settings.showCoords ? 'block' : 'none';
+});
+
+crosshairToggle.addEventListener('click', () => {
+    settings.showCrosshair = !settings.showCrosshair;
+    crosshairToggle.classList.toggle('on', settings.showCrosshair);
+    document.getElementById('crosshair').style.display = 
+        settings.showCrosshair ? 'block' : 'none';
+});
+
+// Применяем настройки сразу
+if (!settings.showCoords) debugEl.style.display = 'none';
+if (!settings.showCrosshair) document.getElementById('crosshair').style.display = 'none';
 
 // ============================================
 // ОБЛАКА
@@ -64,7 +158,7 @@ for (let i = 0; i < 12; i++) {
 }
 
 // ============================================
-// КАРТА ЛЕСА 30x30
+// КАРТА
 // ============================================
 const MAP_SIZE = 30;
 const CELL = 3;
@@ -94,7 +188,7 @@ for (let z = 0; z < MAP_SIZE; z++) {
             continue;
         }
         
-        if (Math.random() < 0.25) {
+        if (Math.random() < 0.3) {
             row += 'T';
         } else {
             row += '.';
@@ -173,9 +267,8 @@ const player = {
 
 function ensurePlayerNotInWall() {
     if (isWall(player.x, player.z)) {
-        player.x = (MID + 0.5) * CELL;
+        player.x = (MID + 1.5) * CELL;
         player.z = (MID + 0.5) * CELL;
-        console.warn('Игрок был в стене — перемещён в центр');
     }
 }
 ensurePlayerNotInWall();
@@ -304,7 +397,7 @@ window.addEventListener('mousemove', (e) => {
 window.addEventListener('mouseup', () => mouseDown = false);
 
 // ============================================
-// ПОЛНАЯ КАРТА
+// ПОЛНАЯ КАРТА (СТАТИЧНАЯ — игрок движется по ней)
 // ============================================
 const fullmapScreen = document.getElementById('fullmap-screen');
 
@@ -321,10 +414,10 @@ minimap.addEventListener('click', (e) => {
 
 function openFullmap() {
     fullmapScreen.classList.add('show');
-    drawFullmap();
 }
 
-fullmapScreen.addEventListener('click', () => {
+fullmapScreen.addEventListener('click', (e) => {
+    // Закрываем если тап не по канвасу (или просто любой тап)
     fullmapScreen.classList.remove('show');
 });
 fullmapScreen.addEventListener('touchstart', (e) => {
@@ -333,15 +426,17 @@ fullmapScreen.addEventListener('touchstart', (e) => {
 }, { passive: false });
 
 function drawFullmap() {
-    const size = Math.min(window.innerWidth * 0.85, window.innerHeight * 0.75);
+    const size = Math.min(window.innerWidth * 0.88, window.innerHeight * 0.78);
     fullmapCanvas.width = size;
     fullmapCanvas.height = size;
     
     const cs = size / MAP_SIZE;
     
+    // Вода
     fmCtx.fillStyle = '#5a9ac8';
     fmCtx.fillRect(0, 0, size, size);
     
+    // Остров — статичный
     for (let z = 0; z < MAP_SIZE; z++) {
         for (let x = 0; x < MAP_SIZE; x++) {
             const cell = MAP[z][x];
@@ -357,6 +452,7 @@ function drawFullmap() {
         }
     }
     
+    // Ягоды
     for (const b of berryBushes) {
         if (b.collected) continue;
         const bx = (b.x / CELL) * cs;
@@ -367,6 +463,7 @@ function drawFullmap() {
         fmCtx.fill();
     }
     
+    // Костёр
     const cx = (campfire.x / CELL) * cs;
     const cz = (campfire.z / CELL) * cs;
     fmCtx.fillStyle = '#ffcc00';
@@ -377,6 +474,7 @@ function drawFullmap() {
     fmCtx.lineWidth = 2;
     fmCtx.stroke();
     
+    // === ИГРОК — красная стрелка, движется по карте ===
     const px = (player.x / CELL) * cs;
     const pz = (player.z / CELL) * cs;
     
@@ -405,6 +503,7 @@ function drawFullmap() {
     fmCtx.stroke();
     fmCtx.restore();
     
+    // N
     fmCtx.fillStyle = '#fff';
     fmCtx.font = 'bold 16px Arial';
     fmCtx.textAlign = 'center';
@@ -415,7 +514,7 @@ function drawFullmap() {
 }
 
 // ============================================
-// КНОПКИ
+// КНОПКИ ДЕЙСТВИЙ
 // ============================================
 function bindButton(id, onDown) {
     const btn = document.getElementById(id);
@@ -432,17 +531,17 @@ function bindButton(id, onDown) {
 }
 
 bindButton('jump-button', () => {
-    if (!player.alive) return;
+    if (!player.alive || !gameStarted) return;
     if (player.onGround) { player.vy = player.jumpPower; player.onGround = false; }
 });
 document.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' && player.onGround && player.alive) {
+    if (e.code === 'Space' && player.onGround && player.alive && gameStarted) {
         player.vy = player.jumpPower; player.onGround = false;
     }
 });
 
 bindButton('collect-button', () => {
-    if (!player.alive) return;
+    if (!player.alive || !gameStarted) return;
     let closest = null, cd = 2.5;
     for (const b of berryBushes) {
         if (b.collected) continue;
@@ -459,14 +558,14 @@ bindButton('collect-button', () => {
 
 const flashBtn = document.getElementById('flashlight-button');
 bindButton('flashlight-button', () => {
-    if (!player.alive) return;
+    if (!player.alive || !gameStarted) return;
     if (player.battery <= 0) { showHint('Батарея разряжена'); return; }
     player.flashlight = !player.flashlight;
     flashBtn.classList.toggle('active', player.flashlight);
 });
 
 bindButton('eat-button', () => {
-    if (!player.alive) return;
+    if (!player.alive || !gameStarted) return;
     if (player.berries > 0 && player.hunger < 100) {
         player.berries--;
         player.hunger = Math.min(100, player.hunger + 25);
@@ -557,10 +656,15 @@ function drawSky() {
 }
 
 // ============================================
-// РЕЙКАСТИНГ
+// РЕЙКАСТИНГ С РЕАЛИСТИЧНЫМИ ДЕРЕВЬЯМИ
 // ============================================
-const FOV = Math.PI / 3;
-const HALF_FOV = FOV / 2;
+let FOV = settings.fov * Math.PI / 180;
+let HALF_FOV = FOV / 2;
+
+function updateFOV() {
+    FOV = settings.fov * Math.PI / 180;
+    HALF_FOV = FOV / 2;
+}
 
 function castRay(rayAngle) {
     const cos = Math.cos(rayAngle), sin = Math.sin(rayAngle);
@@ -600,26 +704,88 @@ function renderWalls() {
         const cell = getCell(player.x + Math.cos(rayAngle) * dist, player.z + Math.sin(rayAngle) * dist);
         
         if (cell === 'W') {
+            // Вода
             const r = Math.floor(50 * brightness + 20);
             const g = Math.floor(120 * brightness + 40);
             const b = Math.floor(180 * brightness + 40);
             ctx.fillStyle = `rgb(${r},${g},${b})`;
             ctx.fillRect(screenX, wallTop, rayStep + 1, wallHeight);
         } else {
-            const r = Math.floor(110 * brightness + 20);
-            const g = Math.floor(80 * brightness + 25);
-            const b = Math.floor(50 * brightness + 15);
-            ctx.fillStyle = `rgb(${r},${g},${b})`;
-            ctx.fillRect(screenX, wallTop, rayStep + 1, wallHeight);
-
-            const crownTop = wallTop;
-            const crownHeight = wallHeight * 0.45;
+            // === РЕАЛИСТИЧНОЕ ДЕРЕВО ===
+            // Верхние 40% — крона (тёмно-зелёная, с иголками)
+            // Нижние 60% — ствол (коричневый, круглый, с текстурой коры)
             
-            const gr = Math.floor(60 * brightness + 20);
-            const gg = Math.floor(120 * brightness + 40);
-            const gb = Math.floor(50 * brightness + 20);
-            ctx.fillStyle = `rgb(${gr},${gg},${gb})`;
+            const trunkTop = wallTop + wallHeight * 0.35;
+            const trunkHeight = wallHeight * 0.65;
+            const crownTop = wallTop;
+            const crownHeight = wallHeight * 0.4;
+            
+            // === КРОНА (тёмно-зелёная с иголками) ===
+            // Определяем "глубину" иголок через синусоиду от угла
+            const needleNoise = Math.sin(i * 0.7) * 0.5 + Math.sin(i * 1.3) * 0.3;
+            const crownBrightness = brightness * (1 + needleNoise * 0.15);
+            
+            const cr = Math.floor(30 * crownBrightness + 15);
+            const cg = Math.floor(75 * crownBrightness + 25);
+            const cb = Math.floor(35 * crownBrightness + 10);
+            
+            ctx.fillStyle = `rgb(${cr},${cg},${cb})`;
             ctx.fillRect(screenX, crownTop, rayStep + 1, crownHeight);
+            
+            // Иголки — вертикальные штрихи внутри кроны
+            if (i % 2 === 0) {
+                const needleDark = Math.sin(i * 1.7) * 0.3;
+                ctx.fillStyle = `rgba(0, 20, 0, ${0.3 + needleDark * 0.2})`;
+                ctx.fillRect(screenX, crownTop, 1, crownHeight * 0.6);
+            }
+            
+            // Верхний край кроны — зубчатый (имитация иголок)
+            if (i % 2 === 0) {
+                ctx.fillStyle = `rgba(60, 100, 50, 0.6)`;
+                ctx.fillRect(screenX, crownTop - 2, 2, 3);
+            }
+            
+            // === СТВОЛ (коричневый, круглый) ===
+            const trunkCenter = wallTop + wallHeight * 0.55;
+            
+            // Основной цвет ствола — коричневый
+            const tr = Math.floor(95 * brightness + 25);
+            const tg = Math.floor(65 * brightness + 18);
+            const tb = Math.floor(40 * brightness + 12);
+            
+            ctx.fillStyle = `rgb(${tr},${tg},${tb})`;
+            ctx.fillRect(screenX, trunkTop, rayStep + 1, trunkHeight);
+            
+            // Объём ствола — левая часть темнее, правая светлее
+            // Используем синус от угла луча для имитации круглого ствола
+            const trunkAngle = rayAngle - player.angle;
+            const trunkShade = Math.sin(trunkAngle * 4) * 0.15;
+            
+            if (trunkShade > 0) {
+                ctx.fillStyle = `rgba(255, 220, 180, ${trunkShade * 0.5})`;
+                ctx.fillRect(screenX, trunkTop, rayStep + 1, trunkHeight);
+            } else {
+                ctx.fillStyle = `rgba(0, 0, 0, ${-trunkShade * 0.5})`;
+                ctx.fillRect(screenX, trunkTop, rayStep + 1, trunkHeight);
+            }
+            
+            // Кора — горизонтальные полоски и "сучки"
+            if (i % 3 === 0) {
+                ctx.fillStyle = `rgba(0, 0, 0, ${0.25 * brightness})`;
+                ctx.fillRect(screenX, trunkTop, 1, trunkHeight);
+            }
+            
+            // Сучки — короткие тёмные полоски на стволе
+            const branchSeed = Math.sin(i * 0.9 + correctedDist * 0.5);
+            if (branchSeed > 0.7) {
+                ctx.fillStyle = `rgba(50, 30, 15, ${0.6 * brightness})`;
+                ctx.fillRect(screenX, trunkTop + trunkHeight * 0.3, rayStep + 1, 3);
+                ctx.fillRect(screenX, trunkTop + trunkHeight * 0.6, rayStep + 1, 2);
+            }
+            
+            // === ПЕРЕХОД между кроной и стволом (мягкая граница) ===
+            ctx.fillStyle = `rgba(60, 80, 45, 0.4)`;
+            ctx.fillRect(screenX, trunkTop - 3, rayStep + 1, 4);
         }
     }
 }
@@ -631,9 +797,9 @@ function renderFloor() {
     const horizon = H / 2 + player.pitch * H * 0.8;
     
     const floorGrad = ctx.createLinearGradient(0, horizon, 0, H);
-    floorGrad.addColorStop(0, '#3a5a2a');
-    floorGrad.addColorStop(0.3, '#5a8a3a');
-    floorGrad.addColorStop(1, '#7aa84a');
+    floorGrad.addColorStop(0, '#2a4a1a');
+    floorGrad.addColorStop(0.3, '#4a7a2a');
+    floorGrad.addColorStop(1, '#6a9a3a');
 
     if (horizon < H) {
         ctx.fillStyle = floorGrad;
@@ -651,7 +817,7 @@ function renderFloor() {
         
         const alpha = Math.max(0, 1 - d / 25) * 0.2;
         ctx.globalAlpha = alpha;
-        ctx.strokeStyle = '#2a4a1a';
+        ctx.strokeStyle = '#1a3a0a';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(0, screenY);
@@ -779,15 +945,11 @@ function renderMinimap() {
             
             const cell = MAP[gz][gx];
             
-            if (cell === 'T') {
-                mmCtx.fillStyle = '#2d6a2d';
-            } else if (cell === 'C') {
-                mmCtx.fillStyle = '#ffaa33';
-            } else if (cell === 'W') {
-                mmCtx.fillStyle = '#5a9ac8';
-            } else {
-                mmCtx.fillStyle = '#c8e8a0';
-            }
+            if (cell === 'T') mmCtx.fillStyle = '#2d6a2d';
+            else if (cell === 'C') mmCtx.fillStyle = '#ffaa33';
+            else if (cell === 'W') mmCtx.fillStyle = '#5a9ac8';
+            else mmCtx.fillStyle = '#c8e8a0';
+            
             mmCtx.fillRect(screenX, screenY, scale + 0.5, scale + 0.5);
         }
     }
@@ -839,7 +1001,7 @@ function renderMinimap() {
 }
 
 // ============================================
-// HUD + ОТЛАДКА
+// HUD
 // ============================================
 const healthCircle = document.getElementById('health-circle');
 const hungerCircle = document.getElementById('hunger-circle');
@@ -861,16 +1023,17 @@ function updateHUD() {
     
     berriesCount.textContent = player.berries;
     
-    // === ОТЛАДКА ===
-    const cellX = Math.floor(player.x / CELL);
-    const cellZ = Math.floor(player.z / CELL);
-    let cellType = '?';
-    if (cellX >= 0 && cellZ >= 0 && cellX < MAP_SIZE && cellZ < MAP_SIZE) {
-        cellType = MAP[cellZ][cellX];
+    // Отладка (если включена)
+    if (settings.showCoords) {
+        const cellX = Math.floor(player.x / CELL);
+        const cellZ = Math.floor(player.z / CELL);
+        let cellType = '?';
+        if (cellX >= 0 && cellZ >= 0 && cellX < MAP_SIZE && cellZ < MAP_SIZE) {
+            cellType = MAP[cellZ][cellX];
+        }
+        debugText.textContent = 
+            `X:${player.x.toFixed(1)} Z:${player.z.toFixed(1)} | Клетка: ${cellX},${cellZ} = "${cellType}" | FOV:${settings.fov}°`;
     }
-    
-    debugEl.textContent = 
-        `X:${player.x.toFixed(1)} Z:${player.z.toFixed(1)} | Клетка: ${cellX},${cellZ} = "${cellType}" | Карта ${MAP_SIZE}x${MAP_SIZE}`;
 }
 
 // ============================================
@@ -906,7 +1069,7 @@ let hungerTimer = 0;
 let batteryTimer = 0;
 
 function update(dt) {
-    if (!player.alive) return;
+    if (!player.alive || !gameStarted) return;
 
     if (joystick.active) {
         const jx = joystick.dx / joystick.maxDist;
@@ -969,6 +1132,11 @@ function update(dt) {
         if (b.collected && now > b.respawnAt) b.collected = false;
     }
 
+    // Обновляем FOV если менялся
+    if (FOV !== settings.fov * Math.PI / 180) {
+        updateFOV();
+    }
+
     updateHUD();
 }
 
@@ -976,6 +1144,8 @@ function update(dt) {
 // РЕНДЕР
 // ============================================
 function render() {
+    if (!gameStarted) return;
+    
     drawSky();
     renderFloor();
     renderWalls();
@@ -983,6 +1153,11 @@ function render() {
     renderBerries();
     drawVignette();
     renderMinimap();
+    
+    // Если открыта полная карта — рисуем её каждый кадр (для движения игрока)
+    if (fullmapScreen.classList.contains('show')) {
+        drawFullmap();
+    }
 }
 
 // ============================================
