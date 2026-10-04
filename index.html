@@ -6,13 +6,24 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="screen-orientation" content="landscape">
-    <title>Forest — Prototype</title>
+    <title>Sons of the Forest — Mini</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="rotate-overlay">
         <div class="rotate-icon">📱</div>
         <div class="rotate-text">Поверни телефон горизонтально</div>
+    </div>
+
+    <!-- ЗАСТАВКА -->
+    <div id="splash-screen">
+        <div class="splash-bg"></div>
+        <div class="splash-content">
+            <div class="splash-logo">FOREST</div>
+            <div class="splash-sub">SURVIVAL HORROR</div>
+            <div class="splash-loading">Загрузка<span class="dots">...</span></div>
+        </div>
+        <div class="splash-footer">Нажми, чтобы начать</div>
     </div>
 
     <div id="game-container">
@@ -38,9 +49,9 @@
         
         <div id="hint"></div>
         
-        <!-- ОТЛАДКА: координаты игрока -->
-        <div id="debug" style="position:absolute;bottom:8px;left:8px;color:#0f0;font-size:13px;font-family:monospace;background:rgba(0,0,0,0.8);padding:6px 10px;border-radius:6px;z-index:99;pointer-events:none;line-height:1.4;">
-            загрузка...
+        <!-- ОТЛАДКА (скрыта по умолчанию) -->
+        <div id="debug" style="display:none;">
+            <span id="debug-text">загрузка...</span>
         </div>
 
         <!-- Джойстик -->
@@ -60,10 +71,40 @@
         </div>
         
         <div id="fullscreen-btn">⛶</div>
+        <div id="settings-btn">⚙️</div>
         <div id="crosshair"></div>
         <div id="damage-flash"></div>
         
-        <!-- ПОЛНАЯ КАРТА -->
+        <!-- НАСТРОЙКИ -->
+        <div id="settings-screen">
+            <div class="settings-panel">
+                <div class="settings-title">НАСТРОЙКИ</div>
+                
+                <div class="setting-row">
+                    <label>Поле зрения (FOV)</label>
+                    <input type="range" id="fov-slider" min="50" max="110" value="70" step="5">
+                    <span id="fov-value">70°</span>
+                </div>
+                
+                <div class="setting-row">
+                    <label>Показать координаты</label>
+                    <div class="toggle" id="coords-toggle">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+                
+                <div class="setting-row">
+                    <label>Показать прицел</label>
+                    <div class="toggle" id="crosshair-toggle">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+                
+                <button id="settings-close">ЗАКРЫТЬ</button>
+            </div>
+        </div>
+        
+        <!-- ПОЛНАЯ КАРТА (статичная) -->
         <div id="fullmap-screen">
             <div class="fullmap-title">КАРТА ОСТРОВА</div>
             <canvas id="fullmap-canvas"></canvas>
