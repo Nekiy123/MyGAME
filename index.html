@@ -18,10 +18,9 @@
     <div id="game-container">
         <canvas id="game-canvas"></canvas>
         
-        <!-- МИНИКАРТА с иконками вокруг -->
+        <!-- МИНИКАРТА -->
         <div id="minimap-wrap">
             <canvas id="minimap"></canvas>
-            <!-- Новые значки вокруг миникарты -->
             <div class="hud-circle health-circle" id="health-circle">
                 <span class="hud-icon">❤️</span>
             </div>
@@ -38,6 +37,11 @@
         </div>
         
         <div id="hint"></div>
+        
+        <!-- ОТЛАДКА: координаты игрока -->
+        <div id="debug" style="position:absolute;bottom:8px;left:8px;color:#0f0;font-size:13px;font-family:monospace;background:rgba(0,0,0,0.8);padding:6px 10px;border-radius:6px;z-index:99;pointer-events:none;line-height:1.4;">
+            загрузка...
+        </div>
 
         <!-- Джойстик -->
         <div id="joystick-zone">
@@ -59,7 +63,7 @@
         <div id="crosshair"></div>
         <div id="damage-flash"></div>
         
-        <!-- ПОЛНАЯ КАРТА (открывается тапом на миникарту) -->
+        <!-- ПОЛНАЯ КАРТА -->
         <div id="fullmap-screen">
             <div class="fullmap-title">КАРТА ОСТРОВА</div>
             <canvas id="fullmap-canvas"></canvas>
@@ -76,4 +80,4 @@
     
     <script src="game.js"></script>
 </body>
-        </html>
+                </html>
